@@ -1,0 +1,4 @@
+C:\Users\KevinBamwesa\Source\CsharpSome\CSharpTesting\obj\Debug\net9.0\CSharpTesting.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\KevinBamwesa\Source\CsharpSome\CSharpTesting\obj\Debug\net9.0\CSharpTesting.AssemblyInfoInputs.cache
+C:\Users\KevinBamwesa\Source\CsharpSome\CSharpTesting\obj\Debug\net9.0\CSharpTesting.AssemblyInfo.cs
+C:\Users\KevinBamwesa\Source\CsharpSome\CSharpTesting\obj\Debug\net9.0\CSharpTesting.csproj.CoreCompileInputs.cache
