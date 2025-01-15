@@ -49,6 +49,36 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
+          "dependencies": {
+            "BetterConsoleTables": {
+              "target": "Package",
+              "version": "[2.0.5-rc1, )"
+            },
+            "ConsoleTables": {
+              "target": "Package",
+              "version": "[2.6.2, )"
+            },
+            "CsvHelper": {
+              "target": "Package",
+              "version": "[33.0.1, )"
+            },
+            "Figgle": {
+              "target": "Package",
+              "version": "[0.5.1, )"
+            },
+            "Microsoft.Azure.KeyVault.Core": {
+              "target": "Package",
+              "version": "[3.0.5, )"
+            },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.3, )"
+            },
+            "WindowsAzure.Storage": {
+              "target": "Package",
+              "version": "[9.3.3, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",

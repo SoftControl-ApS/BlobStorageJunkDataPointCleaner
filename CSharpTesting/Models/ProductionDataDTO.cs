@@ -4,7 +4,7 @@
 //
 //    using CSharpTesting.Models;
 //
-//    var productionMonth = ProductionMonth.FromJson(jsonString);
+//    var productionDto = ProductionDto.FromJson(jsonString);
 
 namespace CSharpTesting.Models
 {
@@ -15,7 +15,7 @@ namespace CSharpTesting.Models
     using Newtonsoft.Json;
     using Newtonsoft.Json.Converters;
 
-    public partial class ProductionMonth
+    public partial class ProductionDto
     {
         [JsonProperty("timeType", NullValueHandling = NullValueHandling.Ignore)]
         public long? TimeType { get; set; }
@@ -26,25 +26,5 @@ namespace CSharpTesting.Models
         [JsonProperty("inverters", NullValueHandling = NullValueHandling.Ignore)]
         public List<Inverter> Inverters { get; set; }
     }
-
-    public partial class Inverter
-    {
-        [JsonProperty("id", NullValueHandling = NullValueHandling.Ignore)]
-        public long? Id { get; set; }
-
-        [JsonProperty("production", NullValueHandling = NullValueHandling.Ignore)]
-        public List<Production> Production { get; set; }
-    }
-
-    public partial class Production
-    {
-        [JsonProperty("timeStamp", NullValueHandling = NullValueHandling.Ignore)]
-        public DateTimeOffset? TimeStamp { get; set; }
-
-        [JsonProperty("value", NullValueHandling = NullValueHandling.Ignore)]
-        public long? Value { get; set; }
-
-        [JsonProperty("quality", NullValueHandling = NullValueHandling.Ignore)]
-        public long? Quality { get; set; }
-    }
 }
+
