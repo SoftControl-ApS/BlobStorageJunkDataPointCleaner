@@ -10,7 +10,8 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Reflection.Metadata;
-
+using SharedLibrary.util;
+using static SharedLibrary.util.Logging;
 namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
@@ -142,9 +143,9 @@ namespace SharedLibrary.Azure
         }
 
 
-        private static async Task AddJsonToSingularFileAsync(string fileName, string jsonContent)
+        private async Task AddJsonToSingularFileAsync(string fileName, string jsonContent)
         {
-            int installationId = Convert.ToInt32(_sn);
+            int installationId = Convert.ToInt32(InstallationId);
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             string directoryPath = Path.Combine(desktopPath, $"{installationId}");
             string outputFilePath = Path.Combine(directoryPath, $"{fileName}");

@@ -3,8 +3,6 @@ using System.IO;
 
 namespace SharedLibrary
 {
-
-
     public class ApplicationVariables
     {
         static ApplicationVariables()
@@ -14,27 +12,31 @@ namespace SharedLibrary
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
             Configuration = builder.Build();
+
+            // Initialize static properties after Configuration is built
+            AzureBlobConnectionName = Configuration["AzureBlob:ConnectionName"];
+            AzureBlobConnectionKey = Configuration["AzureBlob:ConnectionKey"];
+            AzureBlobConnectionString =
+                $"DefaultEndpointsProtocol=https;AccountName={AzureBlobConnectionName};" +
+                $"AccountKey={AzureBlobConnectionKey};" +
+                $"EndpointSuffix=core.windows.net";
         }
 
         public static IConfiguration Configuration { get; }
 
         #region Private Fields
         internal static double MaxEnergyInJoules { get; set; }
-        public static string AzureBlobConnectionName { get; } = Configuration["AzureBlob:ConnectionName"];
-
-        public static string AzureBlobConnectionKey { get; } = Configuration["AzureBlob:ConnectionKey"];
-
-        public static string AzureBlobConnectionString { get; } =
-            $"DefaultEndpointsProtocol=https;AccountName={AzureBlobConnectionName};" +
-            $"AccountKey={AzureBlobConnectionKey};" +
-            $"EndpointSuffix=core.windows.net";
-
+        public static string AzureBlobConnectionName { get; private set; }
+        public static string AzureBlobConnectionKey { get; private set; }
+        public static string AzureBlobConnectionString { get; private set; }
         #endregion
+
         public static double SetMaxEnergyInJoule(double value)
         {
             ApplicationVariables.MaxEnergyInJoules = value;
             return ApplicationVariables.MaxEnergyInJoules;
         }
+
         public static double GetMaxEnergyInJoule()
         {
             return ApplicationVariables.MaxEnergyInJoules;

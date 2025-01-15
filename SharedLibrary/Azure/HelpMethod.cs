@@ -1,6 +1,9 @@
 ﻿using SharedLibrary.Models;
 using Figgle;
 using Microsoft.WindowsAzure.Storage.Blob;
+using System.Data;
+using SharedLibrary.util;
+using static SharedLibrary.util.Logging;
 
 namespace SharedLibrary.Azure
 {
@@ -42,15 +45,31 @@ namespace SharedLibrary.Azure
         {
             var fileName = GetFileName(blobItem.Name);
 
-            if (!fileName.Contains("pd") || fileName.Contains("_BackUp"))
+            if (fileName.Contains("_BackUp")) { throw new DataException("BackupFile"); }
+
+            bool isDayFile = fileName.Contains("pd");
+            bool isMonthFile = fileName.Contains("pm");
+            bool isYearFile = fileName.Contains("py");
+            bool isTotalFile = fileName.Contains("pt");
+
+
+            if (isDayFile)
             {
-                return "null"; // Ignores non power day files and backups
+                return await HandleDayFiles(blobItem, fileName, installationId);
+            }
+            else if (isMonthFile)
+            {
+
             }
 
-            var Originaljson = await ReadBlobFileJson(fileName + ".json", fileName + ".zip", installationId.ToString());
-            if (Originaljson == null)
-                return "null";
-            var productionDto = ProductionDto.FromJson(Originaljson);
+            throw new NotImplementedException();
+        }
+
+        private static async Task<string> HandleDayFiles(CloudBlockBlob blobItem, string fileName, int installationId)
+        {
+            var originalJson = await ReadBlobFileJson(fileName + ".json", fileName + ".zip", installationId.ToString());
+
+            var productionDto = ProductionDto.FromJson(originalJson);
 
             ExportToCSV(productionDto, blobItem.Name);
 
@@ -60,7 +79,7 @@ namespace SharedLibrary.Azure
             {
                 foreach (var production in inv.Production)
                 {
-                    if (production.Value >=  ApplicationVariables.MaxEnergyInJoules)
+                    if (production.Value >= ApplicationVariables.MaxEnergyInJoules)
                     {
                         production.Value = 0;
                         didChange = true;
@@ -73,40 +92,15 @@ namespace SharedLibrary.Azure
                 fileName = GetFileName(blobItem.Name);
 
                 var updatedJson = ProductionDto.ToJson(productionDto);
-                await WriteJson(json: Originaljson, fileName: $"{fileName}_BackUp", sn: installationId.ToString());// Backup
+                await WriteJson(json: originalJson, fileName: $"{fileName}_BackUp", sn: installationId.ToString());// Backup
                 await DeleteBlobFile(fileName, installationId); // Delete original
                 await WriteJson(json: updatedJson, fileName: fileName, sn: installationId.ToString());    // Uploadedre
-                return Originaljson;
+                return originalJson;
             }
             else
             {
-                return Originaljson;
+                return originalJson;
             }
-
-        }
-
-        public static void Log(string title, ConsoleColor color = ConsoleColor.DarkMagenta)
-        {
-            var banner = FiggleFonts.Standard.Render(title);
-            Console.ForegroundColor = color;
-            Console.WriteLine(banner);
-            Console.ResetColor();
-        }
-
-        public static void LogError(string title, ConsoleColor color = ConsoleColor.DarkMagenta)
-        {
-            var banner = FiggleFonts.Standard.Render(title);
-            Console.ForegroundColor = color;
-            Console.WriteLine(banner);
-            Console.ResetColor();
-        }
-
-        public static void Message(string message)
-        {
-            //var banner = FiggleFonts.Alligator2.Render(message);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine(message);
-            Console.ResetColor();
         }
     }
 }
