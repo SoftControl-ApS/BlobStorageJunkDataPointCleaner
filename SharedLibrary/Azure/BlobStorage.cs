@@ -12,7 +12,7 @@ using SharedLibrary.SunSys;
 namespace SharedLibrary.Azure;
 
 using SharedLibrary.util;
-using static SharedLibrary.util.Logging;
+using static SharedLibrary.util.Util;
 
 public partial class AzureBlobCtrl
 {

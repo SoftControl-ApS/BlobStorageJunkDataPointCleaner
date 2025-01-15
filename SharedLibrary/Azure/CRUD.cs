@@ -8,7 +8,7 @@ using System.Text;
 using static SharedLibrary.ApplicationVariables;
 using static Microsoft.WindowsAzure.Storage.CloudStorageAccount;
 using SharedLibrary.util;
-using static SharedLibrary.util.Logging;
+using static SharedLibrary.util.Util;
 
 namespace SharedLibrary.Azure
 {

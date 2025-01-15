@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SharedLibrary.util
 {
-    public static class Logging
+    public static partial class Util
     {
         public static void Log(string title, ConsoleColor color = ConsoleColor.DarkMagenta)
         {

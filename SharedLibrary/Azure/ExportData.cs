@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Reflection.Metadata;
 using SharedLibrary.util;
-using static SharedLibrary.util.Logging;
+using static SharedLibrary.util.Util;
 namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl

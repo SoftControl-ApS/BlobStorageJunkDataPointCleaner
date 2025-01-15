@@ -3,28 +3,12 @@ using Figgle;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System.Data;
 using SharedLibrary.util;
-using static SharedLibrary.util.Logging;
+using static SharedLibrary.util.Util;
 
 namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
-
-        private static string GetFileName(string blobName)
-        {
-            var fileName = Path.GetFileName(blobName);
-
-            if (fileName.EndsWith(".zip"))
-            {
-                fileName = fileName.Substring(0, fileName.Length - 4);
-            }
-            else if (fileName.EndsWith(".json"))
-            {
-                fileName = fileName.Substring(0, fileName.Length - 5);
-            }
-
-            return fileName;
-        }
         private static async Task<string> ProcessBlobAsync(IListBlobItem item, List<string> filedList, int installationId)
         {
             if (item is not CloudBlockBlob blobItem)
