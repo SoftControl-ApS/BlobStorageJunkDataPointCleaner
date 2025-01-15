@@ -13,9 +13,14 @@ namespace SharedLibrary
 
             Configuration = builder.Build();
 
+
             // Initialize static properties after Configuration is built
-            AzureBlobConnectionName = Configuration["AzureBlob:ConnectionName"];
-            AzureBlobConnectionKey = Configuration["AzureBlob:ConnectionKey"];
+            //AzureBlobConnectionName = Configuration["AzureBlob:ConnectionName"];
+            //AzureBlobConnectionKey = Configuration["AzureBlob:ConnectionKey"];
+
+            AzureBlobConnectionName = "sundatatest";
+            AzureBlobConnectionKey = "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";
+
             AzureBlobConnectionString =
                 $"DefaultEndpointsProtocol=https;AccountName={AzureBlobConnectionName};" +
                 $"AccountKey={AzureBlobConnectionKey};" +

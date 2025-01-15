@@ -22,7 +22,23 @@ namespace SharedLibrary.Azure
             Console.WriteLine($"Blob '{zip}' in installation '{installationId}' deleted successfully.");
         }
 
-        public static async Task<string> ReadBlobFileJson(string fileName, string zipFileName, string sn, bool acquireLock = true)
+        public async Task<string> ReadBlobFile(string fileName)
+        {
+            string json = "null";
+
+            try
+            {
+                json = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId.ToString());
+
+            }
+            catch (Exception ex)
+            {
+                return json;
+            }
+
+            return json;
+        }
+        public static async Task<string> ReadBlobFile(string fileName, string zipFileName, string sn, bool acquireLock = true)
         {
             if (!zipFileName.EndsWith(".zip"))
                 throw new ArgumentException("file name must end with .zip", nameof(zipFileName));
@@ -75,7 +91,7 @@ namespace SharedLibrary.Azure
                             using (var entryStream = jsonFile.Open())
                             using (var streamWriter = new StreamWriter(entryStream))
                             {
-                                streamWriter.Write(json);
+                                await streamWriter.WriteAsync(json);
                             }
                         }
 

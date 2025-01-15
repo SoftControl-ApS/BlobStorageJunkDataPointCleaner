@@ -6,6 +6,9 @@
 //
 //    var productionDto = ProductionDto.FromJson(jsonString);
 
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.Serialization;
+
 namespace SharedLibrary.Models
 {
     using System;
@@ -14,7 +17,7 @@ namespace SharedLibrary.Models
     using System.Globalization;
     using Newtonsoft.Json;
     using Newtonsoft.Json.Converters;
-
+    [Serializable]
     public partial class ProductionDto
     {
         [JsonProperty("timeType", NullValueHandling = NullValueHandling.Ignore)]
@@ -27,4 +30,3 @@ namespace SharedLibrary.Models
         public List<Inverter> Inverters { get; set; }
     }
 }
-
