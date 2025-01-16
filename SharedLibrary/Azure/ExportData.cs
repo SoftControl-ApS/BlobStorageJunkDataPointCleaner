@@ -45,8 +45,6 @@ namespace SharedLibrary.Azure
         public static bool ExportToCSV(ProductionDto production, string fileName)
         {
             var outputFilePath = directoryCheck(fileName);
-            if (!fileName.Contains("pd20241130"))
-                return false;
 
             using (var writer = new StreamWriter(outputFilePath))
             using (var csv = new CsvWriter(writer, csvConfig))
@@ -123,25 +121,6 @@ namespace SharedLibrary.Azure
             Message("With File Path: " + outputFilePath);
             return true;
         }
-
-        private static double CalculateMedian(List<double> values)
-        {
-            if (values == null || values.Count == 0)
-                return 0;
-
-            var sortedValues = values.OrderBy(v => v).ToList();
-            int count = sortedValues.Count;
-
-            if (count % 2 == 0)
-            {
-                return (sortedValues[count / 2 - 1] + sortedValues[count / 2]) / 2.0;
-            }
-            else
-            {
-                return sortedValues[count / 2];
-            }
-        }
-
 
         private async Task AddJsonToSingularFileAsync(string fileName, string jsonContent)
         {

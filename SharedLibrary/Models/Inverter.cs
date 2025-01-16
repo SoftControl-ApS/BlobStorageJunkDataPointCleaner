@@ -14,7 +14,7 @@ namespace SharedLibrary.Models
     public partial class Inverter
     {
         [JsonProperty("id", NullValueHandling = NullValueHandling.Ignore)]
-        public long? Id { get; set; }
+        public int? Id { get; set; }
 
         [JsonProperty("production", NullValueHandling = NullValueHandling.Ignore)]
         public List<DataPoint> Production { get; set; }

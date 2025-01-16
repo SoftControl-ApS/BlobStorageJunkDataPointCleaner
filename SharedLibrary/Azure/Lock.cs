@@ -14,9 +14,9 @@ namespace SharedLibrary.Azure
 
         private static TimeSpan LockTimeOut = TimeSpan.FromMinutes(1);
 
-        private static ReaderWriterLock GetLock(string file, string zip, string sn)
+        private static ReaderWriterLock GetLock(string file, string sn)
         {
-            var key = file + zip + sn;
+            var key = file + sn;
             ReaderWriterLock foundLock;
 
             lock (LocksLock)
@@ -34,8 +34,6 @@ namespace SharedLibrary.Azure
                     return newLock;
                 }
             }
-
         }
-
     }
 }

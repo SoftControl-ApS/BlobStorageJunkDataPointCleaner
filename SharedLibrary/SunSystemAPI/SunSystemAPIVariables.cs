@@ -10,11 +10,10 @@ namespace SharedLibrary.SunSys
     public partial class SunSystemAPI
     {
         private HttpClient client = new HttpClient()
-        {
-            BaseAddress = new Uri("http://sundataapi.azurewebsites.net"),
-            Timeout = new TimeSpan(100000000000),
-
-        };
+                                    {
+                                        BaseAddress = new Uri("http://sundataapi.azurewebsites.net"),
+                                        Timeout = new TimeSpan(100000000000),
+                                    };
 
         public SunSystemAPI()
         {
@@ -23,40 +22,30 @@ namespace SharedLibrary.SunSys
 
         public async Task<List<InverterAPI>> GetAllInvertersAsync(int installationId)
         {
-            try
-            {
-                var response = await client.GetAsync("/api/Inverter/GetAllInverter?Instid=" + installationId);
-                response.EnsureSuccessStatusCode();
+            var response = await client.GetAsync("/api/Inverter/GetAllInverter?Instid=" + installationId);
+            response.EnsureSuccessStatusCode();
 
-                var settings = new JsonSerializerSettings
-                {
-                    MissingMemberHandling = MissingMemberHandling.Ignore
-                };
+            var settings = new JsonSerializerSettings
+                           {
+                               MissingMemberHandling = MissingMemberHandling.Ignore
+                           };
 
-                var jsonString = await response.Content.ReadAsStringAsync();
-                var inverters = JsonConvert.DeserializeObject<List<InverterAPI>>(jsonString, settings);
+            var jsonString = await response.Content.ReadAsStringAsync();
+            var inverters = JsonConvert.DeserializeObject<List<InverterAPI>>(jsonString, settings);
 
-                return inverters;
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred while fetching inverters: {ex.Message}");
-                return null;
-            }
+            return inverters;
         }
-
 
 
         public async Task<List<InverterModeAPI>> GetInverterModelList()
         {
-            HttpResponseMessage response = client.GetAsync("/api/Inverter/GetInverterBrand").Result;  // Blocking call!
+            HttpResponseMessage response = client.GetAsync("/api/Inverter/GetInverterBrand").Result; // Blocking call!
             response.EnsureSuccessStatusCode();
 
             var settings = new JsonSerializerSettings
-            {
-                MissingMemberHandling = MissingMemberHandling.Ignore
-            };
+                           {
+                               MissingMemberHandling = MissingMemberHandling.Ignore
+                           };
 
             var jsonString = await response.Content.ReadAsStringAsync();
             var invModels = JsonConvert.DeserializeObject<List<InverterModeAPI>>(jsonString, settings);
@@ -66,7 +55,6 @@ namespace SharedLibrary.SunSys
     }
 
 
-
     public class InverterModeAPI
     {
         public int Id { get; set; }
@@ -74,12 +62,12 @@ namespace SharedLibrary.SunSys
         public string power { get; set; }
         public InverterBrand InverterBrand { get; set; }
     }
+
     public class InverterBrand
     {
         public int id { get; set; }
         public string name { get; set; }
     }
-
 
 
     public class InverterAPI
@@ -96,8 +84,7 @@ namespace SharedLibrary.SunSys
         [JsonProperty("DegradeAlgorithm", NullValueHandling = NullValueHandling.Ignore)]
         public long? DegradeAlgorithm { get; set; }
 
-        [JsonProperty("CfgPowerLimit")]
-        public object CfgPowerLimit { get; set; }
+        [JsonProperty("CfgPowerLimit")] public object CfgPowerLimit { get; set; }
 
         [JsonProperty("SerialNumber", NullValueHandling = NullValueHandling.Ignore)]
         public string SerialNumber { get; set; }
@@ -120,7 +107,6 @@ namespace SharedLibrary.SunSys
 
     public partial class Installation
     {
-
         [JsonProperty("Id", NullValueHandling = NullValueHandling.Ignore)]
         public long? InstallationId { get; set; }
 
@@ -133,7 +119,6 @@ namespace SharedLibrary.SunSys
 
     public partial class InverterModel
     {
-
         [JsonProperty("Id", NullValueHandling = NullValueHandling.Ignore)]
         public long? InverterModelId { get; set; }
 
@@ -141,4 +126,3 @@ namespace SharedLibrary.SunSys
         public string Name { get; set; }
     }
 }
-

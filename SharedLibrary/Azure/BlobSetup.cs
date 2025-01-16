@@ -9,15 +9,15 @@ namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
-
         public static CloudBlobClient CreateCloudBlobClient()
         {
             CloudStorageAccount storageAccount = Parse(AzureBlobConnectionString);
             CloudBlobClient? blobClient = storageAccount.CreateCloudBlobClient();
             return blobClient;
         }
+
         public static CloudBlockBlob GetBlockBlobReference(string zip, string installationId,
-          string containerName = "installations")
+                                                           string containerName = "installations")
         {
             CloudBlobContainer rootContainer = GetContainerReference(containerName);
             CloudBlobDirectory snDir = rootContainer.GetDirectoryReference(installationId.ToString());

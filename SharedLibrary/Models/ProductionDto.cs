@@ -12,8 +12,22 @@ namespace SharedLibrary.Models
     using System;
     public partial class ProductionDto
     {
-        public static ProductionDto FromJson(string json) => JsonConvert.DeserializeObject<ProductionDto>(json, Converter.Settings);
-        public static string ToJson(ProductionDto production) => JsonConvert.SerializeObject(production, Converter.Settings);
+        public static ProductionDto FromJson(string json)
+        {
+            if (json == null)
+            {
+                return null;
+            }
+        return JsonConvert.DeserializeObject<ProductionDto>(json, Converter.Settings);
+        } 
+        public static string ToJson(ProductionDto production) 
+        {
+            if (production == null)
+            {
+                return null;
+            }
+            return JsonConvert.SerializeObject(production, Converter.Settings);
+        }
     }
 }
 

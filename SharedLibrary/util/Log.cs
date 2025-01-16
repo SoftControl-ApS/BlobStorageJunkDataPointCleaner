@@ -11,17 +11,24 @@ namespace SharedLibrary.util
     {
         public static void Log(string title, ConsoleColor color = ConsoleColor.DarkMagenta)
         {
-            var banner = FiggleFonts.Standard.Render(title);
+            // var banner = FiggleFonts.Standard.Render(title);
             Console.ForegroundColor = color;
-            Console.WriteLine(banner);
+            Console.WriteLine(title);
             Console.ResetColor();
-        }
-
-        public static void LogError(string title, ConsoleColor color = ConsoleColor.DarkMagenta)
+        } 
+        public static void Title(string title, ConsoleColor color = ConsoleColor.DarkMagenta)
         {
             var banner = FiggleFonts.Standard.Render(title);
             Console.ForegroundColor = color;
-            Console.WriteLine(banner);
+            Console.WriteLine(title);
+            Console.ResetColor();
+        }
+
+        public static void LogError(string title, ConsoleColor color = ConsoleColor.Red)
+        {
+            // var banner = FiggleFonts.Standard.Render(title);
+            Console.ForegroundColor = color;
+            Console.WriteLine(title);
             Console.ResetColor();
         }
 

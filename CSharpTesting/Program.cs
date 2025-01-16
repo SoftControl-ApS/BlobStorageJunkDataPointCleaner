@@ -9,9 +9,10 @@ class Program
     {
         var installationId = "198";
         var containerName = "installations";
+        var date = DateOnly.FromDateTime(new DateTime(2024, 12, 1));
 
         SharedLibrary.ApplicationVariables.SetMaxEnergyInJoule(36_000_000);
 
-        var items = await new  AzureBlobCtrl(containerName, installationId).RemoveJunkieDataPoints();
+        await new AzureBlobCtrl(containerName, installationId).UpDateAllFiles(date);
     }
 }
