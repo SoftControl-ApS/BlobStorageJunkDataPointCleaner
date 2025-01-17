@@ -1,14 +1,18 @@
 ﻿using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using static SharedLibrary.ApplicationVariables;
+using static SharedLibrary.util.Util;
 using static Microsoft.WindowsAzure.Storage.CloudStorageAccount;
 
 namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
+        private List<CloudBlockBlob> blobBLocks;
+
         public static CloudBlobClient CreateCloudBlobClient()
         {
             CloudStorageAccount storageAccount = Parse(AzureBlobConnectionString);
@@ -16,16 +20,44 @@ namespace SharedLibrary.Azure
             return blobClient;
         }
 
-        public static CloudBlockBlob GetBlockBlobReference(string zip, string installationId,
-                                                           string containerName = "installations")
+        private async Task<List<CloudBlockBlob>> GetAllBlobsAsync(string containerName = "installations")
         {
-            CloudBlobContainer rootContainer = GetContainerReference(containerName);
-            CloudBlobDirectory snDir = rootContainer.GetDirectoryReference(installationId.ToString());
-            CloudBlockBlob blobFile = snDir.GetBlockBlobReference(zip);
+            var snDir = GetContainerReference(containerName).GetDirectoryReference(InstallationId);
+            BlobContinuationToken continuationToken = null;
+            var blobs = new List<CloudBlockBlob>();
+
+            do
+            {
+                var resultSegment = await snDir.ListBlobsSegmentedAsync(continuationToken);
+                continuationToken = resultSegment.ContinuationToken;
+
+                foreach (var item in resultSegment.Results)
+                {
+                    if (item is CloudBlockBlob blob)
+                    {
+                        blobs.Add(blob);
+                    }
+                }
+            } while (continuationToken != null);
+
+            return blobs;
+        }
+
+        public async Task<CloudBlockBlob> GetBlockBlobReference(string zip, string installationId,
+                                                                string containerName = "installations")
+        {
+            if (blobBLocks == null || !blobBLocks.Any())
+                blobBLocks = await GetAllBlobsAsync();
+            CloudBlockBlob blobFile = blobBLocks.FirstOrDefault(b => b.Name == $"{installationId}/{zip}");
+            if (blobFile == null)
+            {
+                LogError($"Blob '{zip}' in installation '{installationId}' does not exist.");
+            }
+
             return blobFile;
         }
 
-        public static CloudBlobContainer GetContainerReference(string containerName = "installations")
+        public CloudBlobContainer GetContainerReference(string containerName = "installations")
         {
             var blobClient = CreateCloudBlobClient();
             CloudBlobContainer rootContainer = blobClient.GetContainerReference(containerName);

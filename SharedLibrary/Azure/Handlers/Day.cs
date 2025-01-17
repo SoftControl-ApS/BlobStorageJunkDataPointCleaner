@@ -1,4 +1,5 @@
-﻿using Microsoft.WindowsAzure.Storage.Blob;
+﻿using System.Reflection.Metadata;
+using Microsoft.WindowsAzure.Storage.Blob;
 using SharedLibrary.Models;
 using static SharedLibrary.util.Util;
 
@@ -6,7 +7,7 @@ namespace SharedLibrary.Azure;
 
 public partial class AzureBlobCtrl
 {
-    private async Task<string> HandleDayFiles(CloudBlockBlob blobItem, string fileName)
+    private async Task<string> HandleDayFiles(string fileName)
     {
         var originalJson = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
 
@@ -27,18 +28,46 @@ public partial class AzureBlobCtrl
 
         if (didChange)
         {
-            fileName = GetFileName(blobItem.Name);
-
             var updatedJson = ProductionDto.ToJson(productionDto);
-            await WriteJson(json: originalJson, fileName: $"{fileName}_BackUp"); // Backup
-            await DeleteBlobFile(fileName);                                      // Delete original
-            await WriteJson(json: updatedJson, fileName: fileName);              // Uploadedre
-            return originalJson;
+            BackupAndReplaceOriginalFile(fileName, originalJson, updatedJson);
+            return updatedJson;
         }
         else
         {
             return originalJson;
         }
+    }
+
+    public async Task<bool> RemoveAllJunkiesDayDataPoints()
+    {
+        Title("Remove All Junkies Day DataPoints", ConsoleColor.Cyan);
+        var directory = GetContainerReference(this.ContainerName).GetDirectoryReference(InstallationId);
+        BlobContinuationToken continuationToken = null;
+        do
+        {
+            var results = await directory.ListBlobsSegmentedAsync(continuationToken);
+            continuationToken = results.ContinuationToken;
+
+            var blobs = results.Results
+                               .OfType<CloudBlockBlob>()
+                               .Where(blob => blob.Name.Contains("pd"))
+                               .Where(blob => !blob.Name.Contains("BackUp"));
+
+            Parallel.ForEach(blobs.Where(x => x.Name.ToLower().Contains("backup")), async blob =>
+            {
+                try
+                {
+                    await ProcessBlobAsync(blob);
+                }
+                catch (Exception ex)
+                {
+                    LogError($"Error deleting blob {blob.Name}: {ex.Message}");
+                }
+            });
+            Log($"Cleaned day datapoints day files.");
+        } while (continuationToken != null);
+
+        return true;
     }
 
     private async Task<string> HandleDayFiles(DateOnly date)

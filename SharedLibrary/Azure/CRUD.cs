@@ -15,15 +15,15 @@ namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
-        public static async Task DeleteBlobFile(string zip, string installationId,
-                                                string containerName = "installations")
+        public async Task DeleteBlobFile(string zip, string installationId,
+                                         string containerName = "installations")
         {
             if (!zip.EndsWith(".zip"))
             {
                 zip = zip + ".zip";
             }
 
-            CloudBlockBlob blobFile = GetBlockBlobReference(zip, installationId.ToString(), containerName);
+            CloudBlockBlob blobFile = await GetBlockBlobReference(zip, installationId.ToString(), containerName);
 
             var exists = await blobFile.ExistsAsync();
             if (!exists)
@@ -57,7 +57,7 @@ namespace SharedLibrary.Azure
                 throw new ArgumentException("Either 'InstallationId' or'sn' parameter must be provided.");
             }
 
-            string json = "null";
+            string json;
             json = ReadBlobFile(fileName + ".json", fileName + ".zip", sn).Result;
 
             return json;
@@ -78,24 +78,14 @@ namespace SharedLibrary.Azure
 
             string json = "null";
 
-            CloudBlockBlob blobFile = GetBlockBlobReference(zipFileName, sn);
+            CloudBlockBlob blobFile = await GetBlockBlobReference(zipFileName, sn);
 
             using (var zipStream = new MemoryStream())
             {
-                var exists = await blobFile.ExistsAsync();
-                if (!exists)
-                {
-                    LogError($"Blob '{fileName}' in installation '{InstallationId}' does not exist.");
-                    return null;
-                }
-
                 await blobFile.DownloadToStreamAsync(zipStream);
-
                 ZipArchive archive = new ZipArchive(zipStream);
-
-                ZipArchiveEntry zeipArchiveEntry = archive.GetEntry(fileName);
-
-                using (StreamReader sr = new StreamReader(zeipArchiveEntry.Open()))
+                ZipArchiveEntry zipArchiveEntry = archive.GetEntry(fileName);
+                using (StreamReader sr = new StreamReader(zipArchiveEntry.Open()))
                 {
                     json = await sr.ReadToEndAsync();
                 }
@@ -116,7 +106,7 @@ namespace SharedLibrary.Azure
                 throw new ArgumentException("Either 'InstallationId' or'sn' parameter must be provided.");
             }
 
-            CloudBlockBlob blobFile = GetBlockBlobReference($"{fileName}.zip", sn);
+            CloudBlockBlob blobFile = await GetBlockBlobReference($"{fileName}.zip", sn);
 
             using (MemoryStream ms = new MemoryStream(UTF8Encoding.UTF8.GetBytes(json)))
             {

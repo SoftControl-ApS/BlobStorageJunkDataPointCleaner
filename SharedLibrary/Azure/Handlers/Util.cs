@@ -23,27 +23,28 @@ namespace SharedLibrary.Azure
             {
                 return ("BackupFile");
             }
-
             FileType fileType = FileType.Day;
+            
             if (fileName.Contains("pd"))
             {
                 fileType = FileType.Day;
             }
-            else if (fileName.Contains("pm"))
-            {
-                fileType = FileType.Month;
-            }
-            else if (fileName.Contains("py"))
-            {
-                fileType = FileType.Year;
-            }
-            else if (fileName.Contains("pt"))
-            {
-                fileType = FileType.Total;
-            }
+            // else if (fileName.Contains("pm"))
+            // {
+            //     fileType = FileType.Month;
+            // }
+            // else if (fileName.Contains("py"))
+            // {
+            //     fileType = FileType.Year;
+            // }
+            // else if (fileName.Contains("pt"))
+            // {
+            //     fileType = FileType.Total;
+            // }
             else
             {
-                return ("Unsupported FileType");
+                LogError("Unsupported FileType");
+                return null;    
             }
 
             return await ProcessZipBlobAsync(blobItem, fileType);
@@ -56,7 +57,7 @@ namespace SharedLibrary.Azure
             switch (fileType)
             {
                 case FileType.Day:
-                    return await HandleDayFiles(blobItem, fileName);
+                    return await HandleDayFiles(fileName);
                 default:
                     return null;
             }
@@ -91,16 +92,6 @@ namespace SharedLibrary.Azure
                                      });
             });
             return updatedInverters.ToList();
-        }
-
-        private int ExtractYearFromFileName(string fileName)
-        {
-            if (fileName.Length < 6)
-            {
-                throw new ArgumentException("fileName must be at least 6 characters");
-            }
-
-            return Convert.ToInt32(fileName.Substring(2, 4));
         }
 
         private async Task<List<Inverter>> UpdateInverterProductionData(IEnumerable<Inverter> inverters, int year)
@@ -166,6 +157,16 @@ namespace SharedLibrary.Azure
                        TimeType = oldProduction.TimeType,
                        TimeStamp = oldProduction.TimeStamp,
                    };
+        }
+
+        private int ExtractYearFromFileName(string fileName)
+        {
+            if (fileName.Length < 6)
+            {
+                throw new ArgumentException("fileName must be at least 6 characters");
+            }
+
+            return Convert.ToInt32(fileName.Substring(2, 4));
         }
     }
 }

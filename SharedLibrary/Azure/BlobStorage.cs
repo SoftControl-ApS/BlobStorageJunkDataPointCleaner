@@ -27,47 +27,36 @@ public partial class AzureBlobCtrl
         this.InstallationId = installationId;
     }
 
-    public async Task<bool> RemoveAllJunkiesDayDataPoints()
+   public async Task<bool> UpDateAllFiles(DateOnly date)
     {
-        var blobClient = CreateCloudBlobClient();
-        var rootContainer = blobClient.GetContainerReference(ContainerName);
-        var directory = rootContainer.GetDirectoryReference(InstallationId);
-        BlobContinuationToken continuationToken = null;
-        Title("Remove All Junkies Day DataPoints", ConsoleColor.Cyan);
-        do
+        try
         {
-            var results = await directory.ListBlobsSegmentedAsync(continuationToken);
-            continuationToken = results.ContinuationToken;
+            for (int year = date.Year; year >= date.Year - 2; year--)
+            {
+                for (int month = 1; month <= 12; month++)
+                {
+                    var thisDatte = DateOnly.FromDateTime(new DateTime(date.Year, month, 1));
+                    var monthResult = await UpDateDataPointFiles(thisDatte, FileType.Month);
+                }
 
-            var inverterStatusTasks = results.Results.Select(item => ProcessBlobAsync(item));
+                Log($"Updating year ... {date.Year}");
+                var yearResult = await UpDateDataPointFiles(date, FileType.Year);
+            }
 
-            await Task.WhenAll(inverterStatusTasks);
             return true;
-        } while (continuationToken != null);
+        }
+        catch (Exception ex)
+        {
+            LogError($"Error updating data: {ex.Message}");
+            return false;
+        }
     }
 
     public async Task<string> UpDateDataPointFiles(DateOnly date, FileType fileType)
     {
-        Log($"Update Production Data for {fileType}", ConsoleColor.Cyan);
+        Title($"Update Production Data for {fileType}", ConsoleColor.Cyan);
 
         return await FixFile(fileType, date);
-    }
-
-    public async Task<bool> UpDateAllFiles(DateOnly date)
-    {
-        for (int year = date.Year; year >= date.Year - 2; year--)
-        {
-            // var date = DateOnly.FromDateTime(new DateTime(year, 1, 1));
-            for (int month = 1; month <= 12; month++)
-            {
-                var thisDatte = DateOnly.FromDateTime(new DateTime(date.Year, month, 1));
-                var dasda = await UpDateDataPointFiles(thisDatte, FileType.Month);
-            }
-
-            var adsa = await UpDateDataPointFiles(date, FileType.Year);
-        }
-
-        return true;
     }
 
     private async Task BackupAndReplaceOriginalFile(string fileName, string originalJson, string updatedJson)

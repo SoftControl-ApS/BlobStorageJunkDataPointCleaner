@@ -11,8 +11,11 @@ class Program
         var containerName = "installations";
         var date = DateOnly.FromDateTime(new DateTime(2024, 12, 1));
 
-        SharedLibrary.ApplicationVariables.SetMaxEnergyInJoule(36_000_000);
-
-        await new AzureBlobCtrl(containerName, installationId).UpDateAllFiles(date);
+        SharedLibrary.ApplicationVariables.SetMaxEnergyInJoule(3_600_000_000);
+        var instance = new AzureBlobCtrl(containerName, installationId);
+        if (await instance.RemoveAllJunkiesDayDataPoints())
+            // {
+            await instance.UpDateAllFiles(date);
+        // }
     }
 }
