@@ -10,17 +10,25 @@ namespace SharedLibrary.Models
 {
     using Newtonsoft.Json;
     using System;
+    using static SharedLibrary.util.Util;
     public partial class ProductionDto
     {
         public static ProductionDto FromJson(string json)
         {
-            if (json == null)
+            // Replace NaN with null
+            json = json.Replace("NaN", "null");
+
+            try
             {
-                return null;
+                return JsonConvert.DeserializeObject<ProductionDto>(json);
             }
-        return JsonConvert.DeserializeObject<ProductionDto>(json, Converter.Settings);
-        } 
-        public static string ToJson(ProductionDto production) 
+            catch (JsonReaderException ex)
+            {
+                LogError($"JSON Deserialization Error: {ex.Message}. JSON: {json}");
+                throw; // or handle accordingly
+            }
+        }
+        public static string ToJson(ProductionDto production)
         {
             if (production == null)
             {

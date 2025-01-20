@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Security.AccessControl;
@@ -25,10 +26,13 @@ public partial class AzureBlobCtrl
     {
         this.ContainerName = containerName;
         this.InstallationId = installationId;
+        var res = initBlobBlocks().Result;
     }
 
-   public async Task<bool> UpDateAllFiles(DateOnly date)
+    public async Task<bool> UpDateAllFiles(DateOnly date)
     {
+        var yearsResult = new ConcurrentDictionary<DateOnly, string>();
+        var monthsResult = new ConcurrentDictionary<DateOnly, string>();
         try
         {
             for (int year = date.Year; year >= date.Year - 2; year--)
@@ -36,11 +40,18 @@ public partial class AzureBlobCtrl
                 for (int month = 1; month <= 12; month++)
                 {
                     var thisDatte = DateOnly.FromDateTime(new DateTime(date.Year, month, 1));
-                    var monthResult = await UpDateDataPointFiles(thisDatte, FileType.Month);
+                    monthsResult.TryAdd(thisDatte, await UpDateDataPointFiles(thisDatte, FileType.Month));
                 }
 
-                Log($"Updating year ... {date.Year}");
-                var yearResult = await UpDateDataPointFiles(date, FileType.Year);
+                yearsResult.TryAdd(date, await UpDateDataPointFiles(date, FileType.Year));
+            }
+
+            if (yearsResult.ToList().Any(res => res.Value != "null"))
+            {
+                LogError($"Some data points were not reachable");
+
+
+                var total = await UpDateDataPointFiles(date, FileType.Total);
             }
 
             return true;
@@ -59,12 +70,18 @@ public partial class AzureBlobCtrl
         return await FixFile(fileType, date);
     }
 
-    private async Task BackupAndReplaceOriginalFile(string fileName, string originalJson, string updatedJson)
+    private async Task BackupAndReplaceOriginalFile(string fileName, string? originalJson, string updatedJson)
     {
+        if (updatedJson == null)
+        {
+            LogError("updated Json is null");
+            return;
+        }
         fileName = GetFileName(fileName);
-        await DeleteBlobFile($"{fileName}_BackUp");          // Backup                 
-        await WriteJson(originalJson, $"{fileName}_BackUp"); // Delete original
-        await DeleteBlobFile(fileName);                      // Delete original
+        await DeleteBlobFileIfExist($"{fileName}_BackUp");          // Backup                 
+        if (originalJson != null)
+            await CreateAndUploadBlobFile(originalJson, $"{fileName}_BackUp"); // Delete original
+        await DeleteBlobFileIfExist(fileName);                      // Delete original
         await WriteJson(updatedJson, fileName);              // Upload updated
     }
 }

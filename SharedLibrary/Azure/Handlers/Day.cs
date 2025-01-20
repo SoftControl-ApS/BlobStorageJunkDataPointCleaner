@@ -1,13 +1,81 @@
-﻿using System.Reflection.Metadata;
+﻿using System;
+using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
 using Microsoft.WindowsAzure.Storage.Blob;
 using SharedLibrary.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using static SharedLibrary.util.Util;
 
 namespace SharedLibrary.Azure;
 
 public partial class AzureBlobCtrl
 {
-    private async Task<string> HandleDayFiles(string fileName)
+    public async Task<bool> GenerateDayFile(DateOnly date)
+    {
+        var fileName = $"pd{date.Year}{date.Month:D2}{date.Day:D2}";
+        var originalJson = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
+        ProductionDto productionDto = null;
+        if (originalJson != "NOTFOUND")
+        {
+            productionDto = ProductionDto.FromJson(originalJson);
+            Parallel.ForEach(productionDto.Inverters, inv =>
+            {
+                foreach (var production in inv.Production)
+                {
+                    if (production.Value >= ApplicationVariables.MaxEnergyInJoules)
+                    {
+                        production.Value = 0;
+                    }
+                }
+            });
+
+            var updatedJson = ProductionDto.ToJson(productionDto);
+            await BackupAndReplaceOriginalFile(fileName, null, updatedJson);
+            return true;
+        }
+        else if (originalJson == "NOTFOUND")
+        {
+            var datetime = DateTime.SpecifyKind(new DateTime(date, new TimeOnly(0, 0, 0)), DateTimeKind.Utc);
+            productionDto = new ProductionDto()
+            {
+                TimeType = (int)FileType.Day,
+                TimeStamp = datetime,
+                Inverters = await GetInstallationInverters()
+            };
+
+            Parallel.ForEach(productionDto.Inverters, inv =>
+            {
+                inv.Production = EmptyDayDatapoints(date);
+            });
+
+
+            var updatedJson = ProductionDto.ToJson(productionDto);
+            await CreateAndUploadBlobFile(updatedJson, fileName);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private List<DataPoint> EmptyDayDatapoints(DateOnly date)
+    {
+        var dataPoints = new List<DataPoint>();
+        for (int i = 0; i < 24; i++)
+        {
+            dataPoints.Add(new DataPoint()
+            {
+                Quality = 0,
+                TimeStamp = DateTime.SpecifyKind(new DateTime(date, new TimeOnly(i, 0, 0)), DateTimeKind.Utc),
+                Value = 0
+
+            });
+        }
+
+        return dataPoints;
+    }
+
+    public async Task<string> HandleDayFiles(string fileName)
     {
         var originalJson = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
 
@@ -101,5 +169,46 @@ public partial class AzureBlobCtrl
         {
             return originalJson;
         }
+    }
+
+    private async Task<string> GenerateAndUploadEmptyDayFile(string fileName)
+    {
+        var date = ExtractDateFromFileName(fileName);
+
+        return await GenerateAndUploadEmptyDayFile(date, CancellationToken.None);
+    }
+
+    private async Task<string> GenerateAndUploadEmptyDayFile(DateOnly date, CancellationToken cancellationToken)
+    {
+        var datetime = DateTime.SpecifyKind(new DateTime(date, new TimeOnly(0, 0, 0)), DateTimeKind.Utc);
+        var dayProduction = new ProductionDto()
+        {
+            TimeType = (int)FileType.Year,
+            TimeStamp = datetime,
+            Inverters = await GetInstallationInverters()
+        };
+
+
+        await Parallel.ForEachAsync(dayProduction.Inverters, cancellationToken, async (inverter, token) =>
+        {
+            for (int hour = 0; hour < 24; hour++)
+            {
+                var time = new TimeOnly(hour, 0, 0);
+                inverter.Production.Add(new DataPoint()
+                {
+                    Quality = 0,
+                    TimeStamp = DateTime.SpecifyKind(new DateTime(date, time), DateTimeKind.Utc),
+                    Value = 0
+                });
+            }
+        });
+
+        var json = ProductionDto.ToJson(dayProduction);
+
+        await WriteJson(json, $"py{date.Year}");
+
+        await initBlobBlocks();
+
+        return json;
     }
 }

@@ -2,6 +2,7 @@
 using Microsoft.WindowsAzure.Storage.Blob;
 using static SharedLibrary.util.Util;
 using System.Collections.Concurrent;
+using System;
 
 namespace SharedLibrary.Azure
 {
@@ -23,8 +24,9 @@ namespace SharedLibrary.Azure
             {
                 return ("BackupFile");
             }
+
             FileType fileType = FileType.Day;
-            
+
             if (fileName.Contains("pd"))
             {
                 fileType = FileType.Day;
@@ -44,7 +46,7 @@ namespace SharedLibrary.Azure
             else
             {
                 LogError("Unsupported FileType");
-                return null;    
+                return null;
             }
 
             return await ProcessZipBlobAsync(blobItem, fileType);
@@ -74,7 +76,7 @@ namespace SharedLibrary.Azure
                 case FileType.Year:
                     return await UpdateYearFiles(date);
                 case FileType.Total:
-                    return null;
+                    return await UpdateTotalFile(date);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(fileType), fileType, null);
             }
@@ -86,32 +88,46 @@ namespace SharedLibrary.Azure
             Parallel.ForEach(inverters, inverter =>
             {
                 updatedInverters.Add(new Inverter
-                                     {
-                                         Id = inverter.Id,
-                                         Production = new List<DataPoint>(),
-                                     });
+                {
+                    Id = inverter.Id,
+                    Production = new List<DataPoint>(),
+                });
             });
             return updatedInverters.ToList();
         }
 
         private async Task<List<Inverter>> UpdateInverterProductionData(IEnumerable<Inverter> inverters, int year)
         {
-            var updatedInverters = new List<Inverter>();
+            var updatedInverters = InitializeInverters(inverters);
             var tasks = inverters.SelectMany(inverter => Enumerable.Range(1, 12).Select(month => Task.Run(async () =>
             {
                 var dateTime = new DateTime(year, month, 1);
                 var date = DateOnly.FromDateTime(dateTime);
-                double totalProduction = await GetInverterTotalMonthProduction(date, (int)inverter.Id);
-                updatedInverters.First(inv => inv.Id == inverter.Id).Production.Add(new DataPoint
+
+                double? totalProduction = await GetInverterTotalMonthProduction(date, (int)inverter.Id);
+                if (totalProduction == null)
+                {
+                    updatedInverters.First(inv => inv.Id == inverter.Id).Production.Add(new DataPoint
+                    {
+                        TimeStamp = dateTime,
+                        Quality = 1,
+                        Value = 0
+                    });
+                }
+                else
+                {
+
+                    updatedInverters.First(inv => inv.Id == inverter.Id).Production.Add(new DataPoint
                     {
                         TimeStamp = dateTime,
                         Quality = 1,
                         Value = totalProduction
                     });
+                }
             })));
 
             await Task.WhenAll(tasks);
-            return updatedInverters;
+            return OrderInverterDataPointsByDate(updatedInverters);
         }
 
         private async Task<List<Inverter>> UpdateInverterProductionData(
@@ -124,24 +140,24 @@ namespace SharedLibrary.Azure
             foreach (var inverter in inverters)
             {
                 updatedInverters.Add(new Inverter
-                                     {
-                                         Id = inverter.Id,
-                                         Production = new List<DataPoint>(),
-                                     });
+                {
+                    Id = inverter.Id,
+                    Production = new List<DataPoint>(),
+                });
 
                 for (int day = 1; day <= daysInMonth; day++)
                 {
                     var datapointTimeStamp = new DateTime((int)date.Year, (int)date.Month, day);
                     var reqDate = DateOnly.FromDateTime(datapointTimeStamp);
-                    double totalProduction = await GetInverterTotalMonthProduction(reqDate, (int)inverter.Id);
+                    double totalProduction = (double)await GetInverterTotalMonthProduction(reqDate, (int)inverter.Id);
 
                     updatedInverters.First(inv => inv.Id == inverter.Id)
                                     .Production.Add(new DataPoint
-                                                    {
-                                                        TimeStamp = datapointTimeStamp,
-                                                        Quality = 1,
-                                                        Value = totalProduction
-                                                    });
+                                    {
+                                        TimeStamp = datapointTimeStamp,
+                                        Quality = 1,
+                                        Value = totalProduction
+                                    });
                 }
             }
 
@@ -152,11 +168,11 @@ namespace SharedLibrary.Azure
                                                          IList<Inverter> inverters)
         {
             return new ProductionDto
-                   {
-                       Inverters = inverters.ToList(),
-                       TimeType = oldProduction.TimeType,
-                       TimeStamp = oldProduction.TimeStamp,
-                   };
+            {
+                Inverters = inverters.ToList(),
+                TimeType = oldProduction.TimeType,
+                TimeStamp = oldProduction.TimeStamp,
+            };
         }
 
         private int ExtractYearFromFileName(string fileName)
@@ -167,6 +183,65 @@ namespace SharedLibrary.Azure
             }
 
             return Convert.ToInt32(fileName.Substring(2, 4));
+        }
+        private int ExtractMonthFromFileName(string fileName)
+        {
+            if (fileName.Length < 8)
+            {
+                throw new ArgumentException("fileName must be at least 8 characters");
+            }
+            var result = (fileName.Substring(6, 2));
+            var formated = $"{result:D2}";
+            return Convert.ToInt32(formated);
+        }
+        private int ExtractDayFromFileName(string fileName)
+        {
+            if (fileName.Length < 10)
+            {
+                throw new ArgumentException("fileName must be at least 10 characters");
+            }
+
+            return Convert.ToInt32(fileName.Substring(8, 2));
+        }
+
+        private DateOnly ExtractDateFromFileName(string fileName)
+        {
+            int year = ExtractYearFromFileName(fileName);
+            int month = ExtractMonthFromFileName(fileName);
+            int day = 01;
+            if (fileName.Length > 8)
+                day = ExtractDayFromFileName(fileName);
+
+            DateOnly date = new DateOnly(year, month, day);
+            return date;
+        }
+
+
+        public List<Inverter> OrderInverterDataPointsByDate(List<Inverter> inverters)
+        {
+            Parallel.ForEach(inverters, inverter =>
+            {
+                inverter.Production = inverter.Production
+                    .OrderBy(dp => dp.TimeStamp)
+                    .ToList();
+            });
+
+            return inverters;
+        }
+
+        public string ValidateFileName(string fileName, string? sn)
+        {
+            fileName = GetFileName(fileName);
+            if (string.IsNullOrEmpty(sn) && !string.IsNullOrEmpty(InstallationId))
+            {
+                sn = InstallationId;
+            }
+            else if (string.IsNullOrEmpty(sn) && string.IsNullOrEmpty(InstallationId))
+            {
+                throw new ArgumentException("Either 'InstallationId' or'sn' parameter must be provided.");
+            }
+
+            return sn;
         }
     }
 }

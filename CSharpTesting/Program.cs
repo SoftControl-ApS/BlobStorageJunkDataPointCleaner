@@ -1,5 +1,6 @@
 ﻿using SharedLibrary;
 using SharedLibrary.Azure;
+using static SharedLibrary.util.Util;
 
 namespace CSharpTesting;
 
@@ -7,15 +8,20 @@ class Program
 {
     public static async Task Main(string[] args)
     {
-        var installationId = "198";
+        var installationId = "129";
         var containerName = "installations";
-        var date = DateOnly.FromDateTime(new DateTime(2024, 12, 1));
+        var date = DateOnly.FromDateTime(new DateTime(2025, 1, 1));
+        var energy = 3_600_000_000;
+        SharedLibrary.ApplicationVariables.SetMaxEnergyInJoule(energy);
+        
+        
+        Title($"Handling Installation {installationId}");
+        Log($"ContainerName: {containerName}");
+        Log($"date: {date.ToString()}");
+        Log($"Max energy in Kwh: {energy / 36_00_000}");
 
-        SharedLibrary.ApplicationVariables.SetMaxEnergyInJoule(3_600_000_000);
         var instance = new AzureBlobCtrl(containerName, installationId);
-        if (await instance.RemoveAllJunkiesDayDataPoints())
-            // {
-            await instance.UpDateAllFiles(date);
-        // }
+
+        await instance.UpdateTotalFile(date);
     }
 }

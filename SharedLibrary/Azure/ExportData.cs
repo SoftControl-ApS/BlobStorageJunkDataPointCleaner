@@ -77,7 +77,7 @@ namespace SharedLibrary.Azure
                             Console.WriteLine(dataPoint.Value);
 
 
-                        double value = dataPoint.Value;
+                        double value = (double)dataPoint.Value;
                         double joules = value;
                         double kWh = joules / 3_600_000;
                         double Wh = kWh * 1_000;

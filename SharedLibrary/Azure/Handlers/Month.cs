@@ -35,17 +35,25 @@ public partial class AzureBlobCtrl
         return inverter;
     }
 
-    private async Task<double> GetInverterTotalMonthProduction(DateOnly date, int inverterId)
+    private async Task<double?> GetInverterTotalMonthProduction(DateOnly date, int inverterId)
     {
-        var inverter = await CalculateProductionMonth(date, inverterId);
-        var sum = inverter.Sum(dataPoint => dataPoint.Value);
-        return sum;
+        var inverter = await GetTotalMonthProduction(date, inverterId);
+        try
+        {
+            var sum = inverter.Sum(dataPoint => dataPoint.Value);
+            return sum;
+        }
+        catch (Exception e)
+        {
+            LogError(e.Message);
+            return null;
+        }
     }
 
-    private async Task<ConcurrentDictionary<string, double>> CalculateProductionMonth(DateOnly date, int InverterId)
+    private async Task<ConcurrentDictionary<string, double?>> CalculateProductionMonth(DateOnly date, int InverterId)
     {
-        string fileName = $"pd{date.Year}{date.Month:D2}";
-        var DataPoints = new ConcurrentDictionary<string, double>();
+        string fileName = $"pm{date.Year}{date.Month:D2}";
+        var DataPoints = new ConcurrentDictionary<string, double?>();
         int daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
         string jsonResponse = String.Empty;
 
@@ -53,23 +61,65 @@ public partial class AzureBlobCtrl
         for (int day = 1; day <= daysInMonth; day++)
         {
             var updatedName = fileName + $"{day:D2}";
-            jsonResponse = await ReadBlobFile(updatedName);
-            if (!string.IsNullOrEmpty(jsonResponse))
+            jsonResponse = await ReadBlobFile(updatedName, createIfNotFoud: true);
+
+            var production = ProductionDto.FromJson(jsonResponse);
+            var inverter = production.Inverters.FirstOrDefault(x => x.Id == InverterId);
+            if (inverter != null)
             {
-                var production = ProductionDto.FromJson(jsonResponse);
-                var inverter = production.Inverters.FirstOrDefault(x => x.Id == InverterId);
-                if (inverter != null)
-                {
-                    DataPoints.TryAdd(updatedName, inverter.Production.Sum(x => x.Value));
-                }
-                else
-                {
-                    LogError(
-                        $"Could not Calculate month {date.Month} year {date.Year} total Production for {InverterId}");
-                }
+                DataPoints.TryAdd(updatedName, inverter.Production.Sum(x => x.Value));
+            }
+            else
+            {
+                LogError($"Could not Calculate month {date.Month} year {date.Year} total Production for {InverterId}");
             }
         }
 
         return DataPoints;
     }
+
+
+    private async Task<ConcurrentDictionary<string, double?>> GetTotalMonthProduction(DateOnly date, int InverterId)
+    {
+        string fileName = $"pd{date.Year}{date.Month:D2}";
+        var DataPoints = new ConcurrentDictionary<string, double?>();
+        int daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
+        string jsonResponse = String.Empty;
+
+
+        for (int day = 1; day <= daysInMonth; day++)
+        {
+            var updatedName = fileName + $"{day:D2}";
+            jsonResponse = await ReadBlobFile(updatedName, createIfNotFoud: false);
+            if (jsonResponse == "NOTFOUND")
+            {
+                jsonResponse = await GenerateProductionDayFile(updatedName);
+            }
+            var production = ProductionDto.FromJson(jsonResponse);
+            var inverter = production.Inverters.FirstOrDefault(x => x.Id == InverterId);
+            if (inverter != null)
+            {
+                DataPoints.TryAdd(updatedName, inverter.Production.Sum(x => x.Value));
+            }
+            else
+            {
+                LogError($"Could not Calculate month {date.Month} year {date.Year} total Production for {InverterId}");
+            }
+        }
+
+        return DataPoints;
+    }
+
+    private async Task<string> GenerateProductionDayFile(string filename)
+    {
+        DateOnly date = ExtractDateFromFileName(filename);
+
+        if (await GenerateDayFile(date))
+        {
+            return await ReadBlobFile(filename);
+        }
+
+        return "null";
+    }
+
 }

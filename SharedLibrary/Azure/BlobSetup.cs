@@ -6,12 +6,20 @@ using System.Linq;
 using static SharedLibrary.ApplicationVariables;
 using static SharedLibrary.util.Util;
 using static Microsoft.WindowsAzure.Storage.CloudStorageAccount;
+using SharedLibrary.SunSys;
 
 namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
-        private List<CloudBlockBlob> blobBLocks;
+        private ConcurrentBag<CloudBlockBlob> blobBLocks;
+
+        private async Task<ConcurrentBag<CloudBlockBlob>> initBlobBlocks()
+        {
+            blobBLocks = await GetAllBlobsAsync();
+
+            return blobBLocks;
+        }
 
         public static CloudBlobClient CreateCloudBlobClient()
         {
@@ -20,11 +28,11 @@ namespace SharedLibrary.Azure
             return blobClient;
         }
 
-        private async Task<List<CloudBlockBlob>> GetAllBlobsAsync(string containerName = "installations")
+        private async Task<ConcurrentBag<CloudBlockBlob>> GetAllBlobsAsync(string containerName = "installations")
         {
             var snDir = GetContainerReference(containerName).GetDirectoryReference(InstallationId);
             BlobContinuationToken continuationToken = null;
-            var blobs = new List<CloudBlockBlob>();
+             var blobs = new ConcurrentBag<CloudBlockBlob>();
 
             do
             {
@@ -43,15 +51,17 @@ namespace SharedLibrary.Azure
             return blobs;
         }
 
-        public async Task<CloudBlockBlob> GetBlockBlobReference(string zip, string installationId,
-                                                                string containerName = "installations")
+        public async Task<CloudBlockBlob> GetBlockBlobReference(string zip, string containerName = "installations")
         {
             if (blobBLocks == null || !blobBLocks.Any())
+            {
                 blobBLocks = await GetAllBlobsAsync();
-            CloudBlockBlob blobFile = blobBLocks.FirstOrDefault(b => b.Name == $"{installationId}/{zip}");
+            }
+
+            CloudBlockBlob blobFile = blobBLocks.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
             if (blobFile == null)
             {
-                LogError($"Blob '{zip}' in installation '{installationId}' does not exist.");
+                LogError($"Blob '{zip}' in installation '{InstallationId}' does not exist.");
             }
 
             return blobFile;
