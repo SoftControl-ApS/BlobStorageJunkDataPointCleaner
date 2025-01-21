@@ -17,56 +17,41 @@ namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
-        public async Task DeleteBlobFile(string zip, string installationId,
-                                         string containerName = "installations")
+        #region Create
+        public async Task<bool> CreateAndUploadBlobFile(string jsonContent, string fileName, string containerName = "installations")
         {
-            if (!zip.EndsWith(".zip"))
-            {
-                zip = zip + ".zip";
-            }
+            string zipFileName = $"{fileName}.zip";
+            CloudBlobContainer container = GetContainerReference(containerName);
+            CloudBlockBlob blobFile = container.GetBlockBlobReference($"{InstallationId}/{zipFileName}");
 
-            CloudBlockBlob blobFile = await GetBlockBlobReference(zip, containerName);
-            var exists = await blobFile.ExistsAsync();
-            if (!exists)
+            using (MemoryStream compressedStream = new MemoryStream())
             {
-                LogError($"Blob '{zip}' in installation '{installationId}' does not exist.");
+                using (var archive = new ZipArchive(compressedStream, ZipArchiveMode.Create, true))
+                {
+                    var jsonFileEntry = archive.CreateEntry($"{fileName}.json");
+
+                    using (var entryStream = jsonFileEntry.Open())
+                    using (var streamWriter = new StreamWriter(entryStream))
+                    {
+                        await streamWriter.WriteAsync(jsonContent);
+                    }
+                }
+
+                compressedStream.Seek(0, SeekOrigin.Begin);
+                await blobFile.UploadFromStreamAsync(compressedStream);
             }
-            else
-            {
-                var result = await blobFile.DeleteIfExistsAsync();
-                Log($"Blob '{zip}' in installation '{installationId}' deleted {result}.");
-            }
+            Log($"{fileName} production object was created", ConsoleColor.Yellow);
 
             await initBlobBlocks();
+            return true;
         }
-        public async Task DeleteBlobFileIfExist(string zip, string containerName = "installations")
+        #endregion
+        #region Read
+        public async Task<string> ReadBlobFile(string fileName, bool acquireLock = true)
         {
-            try
-            {
-                CloudBlobContainer container = GetContainerReference(containerName);
-                var blobFile = container.GetBlockBlobReference($"{InstallationId}/{zip}");
-                await blobFile.DeleteIfExistsAsync();
-
-            }
-            catch (Exception ex)
-            {
-
-            }
-            if (!zip.EndsWith(".zip"))
-            {
-                zip = zip + ".zip";
-            }
-            await initBlobBlocks();
+            return await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
         }
-        public async Task DeleteBlobFile(string zip,
-                                         string containerName = "installations")
-        {
-            if (string.IsNullOrEmpty(InstallationId))
-                throw new ArgumentException("InstallationId' parameter must be provided.");
-
-            await DeleteBlobFile(zip, InstallationId, containerName);
-        }
-
+        
         public async Task<string> ReadBlobFile(string fileName, string sn = null, bool createIfNotFoud = false)
         {
             if (string.IsNullOrEmpty(sn) && !string.IsNullOrEmpty(InstallationId))
@@ -93,8 +78,7 @@ namespace SharedLibrary.Azure
             return json;
         }
 
-        public async Task<string> ReadBlobFile(string fileName, string zipFileName, string sn = null,
-                                               bool acquireLock = true)
+        public async Task<string> ReadBlobFile(string fileName, string zipFileName, string sn = null, bool acquireLock = true)
         {
             if (string.IsNullOrEmpty(sn) && !string.IsNullOrEmpty(InstallationId))
                 sn = InstallationId;
@@ -116,7 +100,7 @@ namespace SharedLibrary.Azure
                 {
                     var a = await blobFile.ExistsAsync();
                     if (a == false)
-                        throw new NullReferenceException();
+                        throw new NullReferenceException(nameof(a));
                 }
                 catch (NullReferenceException e)
                 {
@@ -136,8 +120,7 @@ namespace SharedLibrary.Azure
             return json;
         }
 
-        public async Task<string> ReadBlobFileAndCreateIfNotFound(string fileName, string zipFileName, string sn = null,
-                                               bool acquireLock = true)
+        public async Task<string> ReadBlobFileAndCreateIfNotFound(string fileName, string zipFileName, string sn = null, bool acquireLock = true)
         {
             if (string.IsNullOrEmpty(sn) && !string.IsNullOrEmpty(InstallationId))
                 sn = InstallationId;
@@ -187,6 +170,8 @@ namespace SharedLibrary.Azure
             return json;
         }
 
+        #endregion
+        #region update
         public async Task<bool> WriteJson(string json, string fileName, string? sn = null)
         {
             sn = ValidateFileName(fileName, sn);
@@ -216,34 +201,57 @@ namespace SharedLibrary.Azure
             await initBlobBlocks();
             return true;
         }
-
-
-        public async Task<bool> CreateAndUploadBlobFile(string jsonContent, string fileName, string containerName = "installations")
+        #endregion
+        #region Delete
+        public async Task DeleteBlobFile(string zip, string installationId,
+                                         string containerName = "installations")
         {
-            string zipFileName = $"{fileName}.zip";
-            CloudBlobContainer container = GetContainerReference(containerName);
-            CloudBlockBlob blobFile = container.GetBlockBlobReference($"{InstallationId}/{zipFileName}");
-
-            using (MemoryStream compressedStream = new MemoryStream())
+            if (!zip.EndsWith(".zip"))
             {
-                using (var archive = new ZipArchive(compressedStream, ZipArchiveMode.Create, true))
-                {
-                    var jsonFileEntry = archive.CreateEntry($"{fileName}.json");
-
-                    using (var entryStream = jsonFileEntry.Open())
-                    using (var streamWriter = new StreamWriter(entryStream))
-                    {
-                        await streamWriter.WriteAsync(jsonContent);
-                    }
-                }
-
-                compressedStream.Seek(0, SeekOrigin.Begin);
-                await blobFile.UploadFromStreamAsync(compressedStream);
+                zip = zip + ".zip";
             }
-            Log($"{fileName} production object was created", ConsoleColor.Yellow);
+
+            CloudBlockBlob blobFile = await GetBlockBlobReference(zip, containerName);
+            var exists = await blobFile.ExistsAsync();
+            if (!exists)
+            {
+                LogError($"Blob '{zip}' in installation '{installationId}' does not exist.");
+            }
+            else
+            {
+                var result = await blobFile.DeleteIfExistsAsync();
+                Log($"Blob '{zip}' in installation '{installationId}' deleted {result}.");
+            }
 
             await initBlobBlocks();
-            return true;
         }
+        public async Task DeleteBlobFileIfExist(string zip, string containerName = "installations")
+        {
+            try
+            {
+                CloudBlobContainer container = GetContainerReference(containerName);
+                var blobFile = container.GetBlockBlobReference($"{InstallationId}/{zip}");
+                await blobFile.DeleteIfExistsAsync();
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            if (!zip.EndsWith(".zip"))
+            {
+                zip = zip + ".zip";
+            }
+            await initBlobBlocks();
+        }
+        public async Task DeleteBlobFile(string zip,
+                                         string containerName = "installations")
+        {
+            if (string.IsNullOrEmpty(InstallationId))
+                throw new ArgumentException("InstallationId' parameter must be provided.");
+
+            await DeleteBlobFile(zip, InstallationId, containerName);
+        }
+        #endregion
     }
 }
