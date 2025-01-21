@@ -82,6 +82,8 @@ namespace SharedLibrary.Azure
             }
         }
 
+        
+
         private List<Inverter> InitializeInverters(IEnumerable<Inverter> inverters)
         {
             var updatedInverters = new ConcurrentBag<Inverter>();

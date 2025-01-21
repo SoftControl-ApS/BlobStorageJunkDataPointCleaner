@@ -24,6 +24,8 @@ public partial class AzureBlobCtrl
 
         await BackupAndReplaceOriginalFile(fileName, originalJson, updatedJson);
 
+        Title("Finished year" + date.ToString());
+
         return updatedJson;
     }
 
@@ -31,7 +33,7 @@ public partial class AzureBlobCtrl
 
     ProductionDto FinalHandle(ProductionDto oldProduction, List<Inverter> updatedInverters, DateOnly date)
     {
-        
+
 
         foreach (var inverter in updatedInverters)
         {
@@ -39,7 +41,18 @@ public partial class AzureBlobCtrl
                 .Where(x => x.Value.HasValue && !double.IsNaN(x.Value.Value))
                 .Sum(x => x.Value.Value);
 
-            oldProduction.Inverters.Where(inv => inv.Id == inverter.Id)
+            if (inverter.Production.Any(x => x.TimeStamp.Value.Year == date.Year))
+            {
+                oldProduction.Inverters.Where(inv => inv.Id == inverter.Id)
+                .FirstOrDefault()
+                .Production
+                .Where(x => x.TimeStamp.Value.Year == date.Year)
+                .FirstOrDefault()
+                .Value = yearTotal;
+
+            }
+            {
+                oldProduction.Inverters.Where(inv => inv.Id == inverter.Id)
                 .FirstOrDefault()
                 .Production
                 .Add(new DataPoint()
@@ -48,6 +61,7 @@ public partial class AzureBlobCtrl
                     TimeStamp = new DateTime(date.Year, 1, 1),
                     Value = yearTotal
                 });
+            }
         }
 
         ProductionDto productionTotal = new ProductionDto()
@@ -65,13 +79,12 @@ public partial class AzureBlobCtrl
     {
         try
         {
-            var totalProduction = await UpdateYearFiles(date);
+            var totalProduction = await UpdateYearFiles(date, UpdateType.Read);
             return ProductionDto.FromJson(totalProduction).Inverters;
         }
         catch (Exception e)
         {
             LogError($"Error: {e}");
-            //var result = await GetUpdatedInverterYearProductionData(inverters, date);
         }
 
         return null;

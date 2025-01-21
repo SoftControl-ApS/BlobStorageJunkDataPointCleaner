@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -210,5 +211,83 @@ public partial class AzureBlobCtrl
         await initBlobBlocks();
 
         return json;
+    }
+
+
+    async Task<string> GetDayFile(DateOnly date)
+    {
+        string fileName = $"pd{date.Year:D4}{date.Year:D2}{date.Year:D2}";
+        var json = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
+
+        if (IsValidJson(json))
+            return json;
+        else
+            return null;
+    }
+    async Task<ConcurrentBag<BlobFile>> GetYear_DayFilesAsync(DateOnly date)
+    {
+        var dayFiles = new ConcurrentBag<BlobFile>();
+        List<Task> tasks = new List<Task>();
+        var failedFilesName = new Dictionary<string, string>();
+        for (int month = 1; month <= date.Month; month++)
+        {
+            int daysInMonth = DateTime.DaysInMonth(date.Year, month);
+            for (int day = 1; day <= daysInMonth; day++)
+            {
+                tasks.Add(Task.Run(async () =>
+                {
+                    int currentMonth = month;
+                    int currentDay = day;
+                    string fileName = $"pd{date.Year:D4}{currentMonth:D2}{currentDay:D2}";
+                    var json = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
+
+                    if (IsValidJson(json))
+                    {
+                        try
+                        {
+                            var result = new BlobFile()
+                            {
+                                DataJson = json,
+                                Date = new DateOnly(date.Year, month, currentDay),
+                                FileType = FileType.Day,
+                            };
+
+                            dayFiles.Add(result);
+                            return json;
+                        }
+                        catch (Exception ex)
+                        {
+                            failedFilesName.Add(fileName, ex.ToString());
+                            LogError("Error Parsing Json : " + fileName);
+                            LogError(ex.Message, ConsoleColor.DarkRed);
+                            return fileName;
+                        }
+
+                    }
+                    else
+                    {
+                        failedFilesName.Add(fileName, json);
+
+                        LogError("Invalid Json: fileName" + fileName + "Content :\n" + json);
+                        return "";
+                    }
+                }));
+            }
+        }
+
+        await Task.WhenAll(tasks);
+        return dayFiles;
+
+    }
+
+
+    public static bool IsValidJson(string json)
+    {
+        if (string.IsNullOrEmpty(json) ||
+            (json == "NOTFOUND"))
+        {
+            return false;
+        }
+        return true;
     }
 }

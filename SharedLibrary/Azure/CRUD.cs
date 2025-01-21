@@ -47,7 +47,7 @@ namespace SharedLibrary.Azure
         }
         #endregion
         #region Read
-        public async Task<string> ReadBlobFile(string fileName, bool acquireLock = true)
+        public async Task<string> ReadBlobFile(string fileName)
         {
             return await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
         }
