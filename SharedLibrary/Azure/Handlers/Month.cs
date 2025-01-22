@@ -95,6 +95,7 @@ public partial class AzureBlobCtrl
             {
                 jsonResponse = await GenerateProductionDayFile(updatedName);
             }
+
             var production = ProductionDto.FromJson(jsonResponse);
             var inverter = production.Inverters.FirstOrDefault(x => x.Id == InverterId);
             if (inverter != null)
@@ -122,29 +123,30 @@ public partial class AzureBlobCtrl
         return "null";
     }
 
-    async Task<ConcurrentBag<KevinMagicalBlobFile>> GetYear_MonthFilesAsync(DateOnly date)
+    async Task<HoodProduction> GetYear_MonthFilessAsync(DateOnly date)
     {
-        ConcurrentBag<KevinMagicalBlobFile> monthsFiles = new ConcurrentBag<KevinMagicalBlobFile>();
-        List<Task> tasks = new List<Task>();
+        var monthsFiles = new List<HoodProduction>();
 
         for (int month = 1; month <= 12; month++)
         {
-            tasks.Add(Task.Run(async () =>
-            {
-                var currentMonth = month;
-                KevinMagicalBlobFile? result = await GenerateYearFile(currentMonth, date);
-                if (result != null)
-                {
-                    monthsFiles.Add(result);
-                }
-            }));
-        }
+            var currentMonth = month;
+            var requestDate = new DateTime(date.Year, month, 1);
 
-        await Task.WhenAll(tasks);
-        return monthsFiles;
+            GetFileName
+            var result = await ReadBlobFile($"pd:{date.Year}{date.Month}");
+
+            var year = new HoodProduction()
+            {
+                FileType = FileType.Year,
+                Date = new DateOnly(date.Year, 1, 1),
+                DataJson = monthsFiles.ToList()
+            };
+            monthsFiles.Add(year):
+            return year;
+        }
     }
 
-    async Task<KevinMagicalBlobFile?> GenerateYearFile(int currentMonth, DateOnly date)
+    async Task<HoodProduction?> GenerateYearFile(int currentMonth, DateOnly date)
     {
         string customTaskId = $"{currentMonth}";
 
@@ -155,7 +157,7 @@ public partial class AzureBlobCtrl
         {
             try
             {
-                var result = new KevinMagicalBlobFile()
+                var result = new HoodProduction()
                 {
                     DataJson = json,
                     Date = new DateOnly(date.Year, date.Month, 1),
@@ -180,7 +182,4 @@ public partial class AzureBlobCtrl
         LogError($"Task ID: {customTaskId} - Invalid Json: fileName {fileName} Content:\n{json}");
         return null;
     }
-
-
-
 }

@@ -84,7 +84,6 @@ namespace SharedLibrary.Azure
         }
 
 
-
         private List<Inverter> InitializeInvertersToList(IEnumerable<Inverter> inverters)
         {
             return InitializeInverters(inverters).ToList();
@@ -96,13 +95,12 @@ namespace SharedLibrary.Azure
             Parallel.ForEach(inverters, inverter =>
             {
                 updatedInverters.Add(new Inverter
-                {
-                    Id = inverter.Id,
-                    Production = new List<DataPoint>(),
-                });
+                                     {
+                                         Id = inverter.Id,
+                                         Production = new List<DataPoint>(),
+                                     });
             });
             return updatedInverters;
-
         }
 
         private async Task<List<Inverter>> UpdateInverterProductionData(IEnumerable<Inverter> inverters, int year)
@@ -117,21 +115,20 @@ namespace SharedLibrary.Azure
                 if (totalProduction == null)
                 {
                     updatedInverters.First(inv => inv.Id == inverter.Id).Production.Add(new DataPoint
-                    {
-                        TimeStamp = dateTime,
-                        Quality = 1,
-                        Value = 0
-                    });
+                        {
+                            TimeStamp = dateTime,
+                            Quality = 1,
+                            Value = 0
+                        });
                 }
                 else
                 {
-
                     updatedInverters.First(inv => inv.Id == inverter.Id).Production.Add(new DataPoint
-                    {
-                        TimeStamp = dateTime,
-                        Quality = 1,
-                        Value = totalProduction
-                    });
+                        {
+                            TimeStamp = dateTime,
+                            Quality = 1,
+                            Value = totalProduction
+                        });
                 }
             })));
 
@@ -149,10 +146,10 @@ namespace SharedLibrary.Azure
             foreach (var inverter in inverters)
             {
                 updatedInverters.Add(new Inverter
-                {
-                    Id = inverter.Id,
-                    Production = new List<DataPoint>(),
-                });
+                                     {
+                                         Id = inverter.Id,
+                                         Production = new List<DataPoint>(),
+                                     });
 
                 for (int day = 1; day <= daysInMonth; day++)
                 {
@@ -162,11 +159,11 @@ namespace SharedLibrary.Azure
 
                     updatedInverters.First(inv => inv.Id == inverter.Id)
                                     .Production.Add(new DataPoint
-                                    {
-                                        TimeStamp = datapointTimeStamp,
-                                        Quality = 1,
-                                        Value = totalProduction
-                                    });
+                                                    {
+                                                        TimeStamp = datapointTimeStamp,
+                                                        Quality = 1,
+                                                        Value = totalProduction
+                                                    });
                 }
             }
 
@@ -177,11 +174,11 @@ namespace SharedLibrary.Azure
                                                          IList<Inverter> inverters)
         {
             return new ProductionDto
-            {
-                Inverters = inverters.ToList(),
-                TimeType = oldProduction.TimeType,
-                TimeStamp = oldProduction.TimeStamp,
-            };
+                   {
+                       Inverters = inverters.ToList(),
+                       TimeType = oldProduction.TimeType,
+                       TimeStamp = oldProduction.TimeStamp,
+                   };
         }
 
         private int ExtractYearFromFileName(string fileName)
@@ -193,16 +190,19 @@ namespace SharedLibrary.Azure
 
             return Convert.ToInt32(fileName.Substring(2, 4));
         }
+
         private int ExtractMonthFromFileName(string fileName)
         {
             if (fileName.Length < 8)
             {
                 throw new ArgumentException("fileName must be at least 8 characters");
             }
+
             var result = (fileName.Substring(6, 2));
             var formated = $"{result:D2}";
             return Convert.ToInt32(formated);
         }
+
         private int ExtractDayFromFileName(string fileName)
         {
             if (fileName.Length < 10)
@@ -231,8 +231,8 @@ namespace SharedLibrary.Azure
             Parallel.ForEach(inverters, inverter =>
             {
                 inverter.Production = inverter.Production
-                    .OrderBy(dp => dp.TimeStamp)
-                    .ToList();
+                                              .OrderBy(dp => dp.TimeStamp)
+                                              .ToList();
             });
 
             return inverters;
