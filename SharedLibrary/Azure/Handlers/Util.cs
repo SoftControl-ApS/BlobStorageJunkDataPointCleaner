@@ -3,6 +3,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using static SharedLibrary.util.Util;
 using System.Collections.Concurrent;
 using System;
+using System.Collections.Generic;
 
 namespace SharedLibrary.Azure
 {
@@ -82,9 +83,14 @@ namespace SharedLibrary.Azure
             }
         }
 
-        
 
-        private List<Inverter> InitializeInverters(IEnumerable<Inverter> inverters)
+
+        private List<Inverter> InitializeInvertersToList(IEnumerable<Inverter> inverters)
+        {
+            return InitializeInverters(inverters).ToList();
+        }
+
+        private ConcurrentBag<Inverter> InitializeInverters(IEnumerable<Inverter> inverters)
         {
             var updatedInverters = new ConcurrentBag<Inverter>();
             Parallel.ForEach(inverters, inverter =>
@@ -95,12 +101,13 @@ namespace SharedLibrary.Azure
                     Production = new List<DataPoint>(),
                 });
             });
-            return updatedInverters.ToList();
+            return updatedInverters;
+
         }
 
         private async Task<List<Inverter>> UpdateInverterProductionData(IEnumerable<Inverter> inverters, int year)
         {
-            var updatedInverters = InitializeInverters(inverters);
+            var updatedInverters = InitializeInvertersToList(inverters);
             var tasks = inverters.SelectMany(inverter => Enumerable.Range(1, 12).Select(month => Task.Run(async () =>
             {
                 var dateTime = new DateTime(year, month, 1);

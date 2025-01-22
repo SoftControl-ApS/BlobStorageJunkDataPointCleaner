@@ -90,7 +90,7 @@ public partial class AzureBlobCtrl
         for (int day = 1; day <= daysInMonth; day++)
         {
             var updatedName = fileName + $"{day:D2}";
-            jsonResponse = await ReadBlobFile(updatedName, createIfNotFoud: false);
+            jsonResponse = await ReadBlobFile(updatedName);
             if (jsonResponse == "NOTFOUND")
             {
                 jsonResponse = await GenerateProductionDayFile(updatedName);
@@ -121,5 +121,66 @@ public partial class AzureBlobCtrl
 
         return "null";
     }
+
+    async Task<ConcurrentBag<KevinMagicalBlobFile>> GetYear_MonthFilesAsync(DateOnly date)
+    {
+        ConcurrentBag<KevinMagicalBlobFile> monthsFiles = new ConcurrentBag<KevinMagicalBlobFile>();
+        List<Task> tasks = new List<Task>();
+
+        for (int month = 1; month <= 12; month++)
+        {
+            tasks.Add(Task.Run(async () =>
+            {
+                var currentMonth = month;
+                KevinMagicalBlobFile? result = await GenerateYearFile(currentMonth, date);
+                if (result != null)
+                {
+                    monthsFiles.Add(result);
+                }
+            }));
+        }
+
+        await Task.WhenAll(tasks);
+        return monthsFiles;
+    }
+
+    async Task<KevinMagicalBlobFile?> GenerateYearFile(int currentMonth, DateOnly date)
+    {
+        string customTaskId = $"{currentMonth}";
+
+        string fileName = $"pm{date.Year:D4}{currentMonth:D2}";
+        var json = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
+
+        if (IsValidJson(json))
+        {
+            try
+            {
+                var result = new KevinMagicalBlobFile()
+                {
+                    DataJson = json,
+                    Date = new DateOnly(date.Year, date.Month, 1),
+                    FileType = FileType.Month,
+                };
+                return result;
+            }
+            catch (Exception ex)
+            {
+                failedFilesName[fileName] = ex.ToString();
+                LogError($"Task ID: {customTaskId} - Error Parsing Json: {fileName}");
+                LogError(ex.Message, ConsoleColor.DarkRed);
+                return null;
+            }
+        }
+        else
+        {
+            LogError("filename: " + fileName + " was not found");
+        }
+
+        failedFilesName[fileName] = json;
+        LogError($"Task ID: {customTaskId} - Invalid Json: fileName {fileName} Content:\n{json}");
+        return null;
+    }
+
+
 
 }

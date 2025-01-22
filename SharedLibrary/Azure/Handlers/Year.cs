@@ -115,7 +115,7 @@ public partial class AzureBlobCtrl
         while (originalJson == "NOTFOUND");
         fetchedData = ProductionDto.FromJson(originalJson);
 
-        var inverters = InitializeInverters(fetchedData.Inverters);
+        var inverters = InitializeInvertersToList(fetchedData.Inverters);
         var updatedInverters = await UpdateInverterProductionData(inverters, year);
         var date = new DateOnly(ExtractYearFromFileName(fileName), 1, 1);
         var datetime = DateTime.SpecifyKind(new DateTime(date, new TimeOnly(0, 0, 0)), DateTimeKind.Utc);
@@ -207,7 +207,7 @@ public partial class AzureBlobCtrl
         }
         while (fetchedData == null);
 
-        return InitializeInverters(fetchedData.Inverters);
+        return InitializeInvertersToList(fetchedData.Inverters);
 
 
     }
@@ -233,7 +233,7 @@ public partial class AzureBlobCtrl
         while (fetchedData == null);
 
         var result = new ConcurrentBag<Inverter>();
-        Parallel.ForEach(InitializeInverters(fetchedData.Inverters), item =>
+        Parallel.ForEach(InitializeInvertersToList(fetchedData.Inverters), item =>
         {
             result.Add(item);
         });

@@ -51,7 +51,7 @@ namespace SharedLibrary.Azure
         {
             return await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
         }
-        
+
         public async Task<string> ReadBlobFile(string fileName, string sn = null, bool createIfNotFoud = false)
         {
             if (string.IsNullOrEmpty(sn) && !string.IsNullOrEmpty(InstallationId))
@@ -225,24 +225,27 @@ namespace SharedLibrary.Azure
 
             await initBlobBlocks();
         }
-        public async Task DeleteBlobFileIfExist(string zip, string containerName = "installations")
+        public async Task<bool> DeleteBlobFileIfExist(string zip, string containerName = "installations")
         {
+            if (!zip.EndsWith(".zip"))
+                zip = zip + ".zip";
+
             try
             {
                 CloudBlobContainer container = GetContainerReference(containerName);
                 var blobFile = container.GetBlockBlobReference($"{InstallationId}/{zip}");
                 await blobFile.DeleteIfExistsAsync();
-
             }
             catch (Exception ex)
-            {
+            { return false; LogError("Could not delete zip " + zip); LogError(ex.ToString()); }
 
-            }
-            if (!zip.EndsWith(".zip"))
-            {
-                zip = zip + ".zip";
-            }
-            await initBlobBlocks();
+
+            var allBlobs = await GetAllBlobsAsync();
+
+            if (allBlobs.Any(blobfile => blobfile.Name.Contains(zip)))
+                return false;
+            else
+                return true;
         }
         public async Task DeleteBlobFile(string zip,
                                          string containerName = "installations")

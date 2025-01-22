@@ -46,7 +46,7 @@ public partial class AzureBlobCtrl
 
             Parallel.ForEach(productionDto.Inverters, inv =>
             {
-                inv.Production = EmptyDayDatapoints(date);
+                inv.Production = CreateEmptyDayDatapointList(date);
             });
 
 
@@ -59,7 +59,7 @@ public partial class AzureBlobCtrl
         return false;
     }
 
-    private List<DataPoint> EmptyDayDatapoints(DateOnly date)
+    private List<DataPoint> CreateEmptyDayDatapointList(DateOnly date)
     {
         var dataPoints = new List<DataPoint>();
         for (int i = 0; i < 24; i++)
@@ -219,57 +219,69 @@ public partial class AzureBlobCtrl
         string fileName = $"pd{date.Year:D4}{date.Year:D2}{date.Year:D2}";
         var json = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
 
-        if (IsValidJson(json))
-            return json;
-        else
-            return null;
+        //if (IsValidJson(json))
+        return json;
+        //else
+        //return null;
     }
-    async Task<ConcurrentBag<BlobFile>> GetYear_DayFilesAsync(DateOnly date)
+
+
+    ConcurrentDictionary<string, string> failedFilesName = new ConcurrentDictionary<string, string>();
+
+
+    async Task<KevinMagicalBlobFile?> GetDayFile(int currentMonth, int currentDay, DateOnly date)
     {
-        var dayFiles = new ConcurrentBag<BlobFile>();
+        string customTaskId = $"{currentMonth}/{currentDay}";
+
+        string fileName = $"pd{date.Year:D4}{currentMonth:D2}{currentDay:D2}";
+        var json = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
+
+        if (IsValidJson(json))
+        {
+            try
+            {
+                var result = new KevinMagicalBlobFile()
+                {
+                    DataJson = json,
+                    Date = new DateOnly(date.Year, currentMonth, currentDay),
+                    FileType = FileType.Day,
+                };
+                return result;
+            }
+            catch (Exception ex)
+            {
+                failedFilesName[fileName] = ex.ToString();
+                LogError($"Task ID: {customTaskId} - Error Parsing Json: {fileName}");
+                LogError(ex.Message, ConsoleColor.DarkRed);
+                return null;
+            }
+        }
+
+        failedFilesName[fileName] = json;
+        LogError($"Task ID: {customTaskId} - Invalid Json: fileName {fileName} Content:\n{json}");
+        return null;
+    }
+
+
+    async Task<ConcurrentBag<KevinMagicalBlobFile>> GetYear_DayFilesAsync(DateOnly date)
+    {
+        ConcurrentBag<KevinMagicalBlobFile> dayFiles = new ConcurrentBag<KevinMagicalBlobFile>();
         List<Task> tasks = new List<Task>();
-        var failedFilesName = new Dictionary<string, string>();
-        for (int month = 1; month <= date.Month; month++)
+
+        for (int month = 1; month <= 12; month++)
         {
             int daysInMonth = DateTime.DaysInMonth(date.Year, month);
             for (int day = 1; day <= daysInMonth; day++)
             {
+                int currentMonth = month;
+                int currentDay = day;
+
                 tasks.Add(Task.Run(async () =>
                 {
-                    int currentMonth = month;
-                    int currentDay = day;
-                    string fileName = $"pd{date.Year:D4}{currentMonth:D2}{currentDay:D2}";
-                    var json = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
-
-                    if (IsValidJson(json))
+                    KevinMagicalBlobFile? result = await GetDayFile(currentMonth, currentDay, date);
+                    if (result != null)
                     {
-                        try
-                        {
-                            var result = new BlobFile()
-                            {
-                                DataJson = json,
-                                Date = new DateOnly(date.Year, month, currentDay),
-                                FileType = FileType.Day,
-                            };
-
-                            dayFiles.Add(result);
-                            return json;
-                        }
-                        catch (Exception ex)
-                        {
-                            failedFilesName.Add(fileName, ex.ToString());
-                            LogError("Error Parsing Json : " + fileName);
-                            LogError(ex.Message, ConsoleColor.DarkRed);
-                            return fileName;
-                        }
-
-                    }
-                    else
-                    {
-                        failedFilesName.Add(fileName, json);
-
-                        LogError("Invalid Json: fileName" + fileName + "Content :\n" + json);
-                        return "";
+                        dayFiles.Add(result);
                     }
                 }));
             }
@@ -277,7 +289,6 @@ public partial class AzureBlobCtrl
 
         await Task.WhenAll(tasks);
         return dayFiles;
-
     }
 
 

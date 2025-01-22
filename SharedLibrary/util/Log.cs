@@ -15,6 +15,12 @@ namespace SharedLibrary.util
             Console.WriteLine(title);
             Console.ResetColor();
         } 
+        public static void LogSuccess(string title, ConsoleColor color = ConsoleColor.Green)
+        {
+            Console.ForegroundColor = color;
+            Console.WriteLine(title);
+            Console.ResetColor();
+        } 
         public static void Title(string title, ConsoleColor color = ConsoleColor.Magenta)
         {
             var banner = FiggleFonts.Standard.Render(title);

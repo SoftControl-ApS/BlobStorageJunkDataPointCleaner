@@ -27,6 +27,13 @@ class Program
         //{
         var instance = new AzureBlobCtrl(containerName, installationId);
         await instance.LetTheMagicHappen(date);
+
+
+        Log("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_");
+        Title("FINNISHED");
+
+
+
         //tasks.Add(instance.UpdateTotalFile(currentDate));
         //}
 

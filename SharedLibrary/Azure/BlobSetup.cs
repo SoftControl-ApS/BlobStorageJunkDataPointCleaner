@@ -12,13 +12,17 @@ namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
-        private ConcurrentBag<CloudBlockBlob> blobBLocks;
+        private ConcurrentBag<CloudBlockBlob> _blobBLocks;
+        private object lockBlockBlocks { get; } = new object();
 
         private async Task<ConcurrentBag<CloudBlockBlob>> initBlobBlocks()
         {
-            blobBLocks = await GetAllBlobsAsync();
+            lock (lockBlockBlocks)
+            {
+                _blobBLocks = GetAllBlobsAsync().Result;
+            }
 
-            return blobBLocks;
+            return _blobBLocks;
         }
 
         public static CloudBlobClient CreateCloudBlobClient()
@@ -32,7 +36,7 @@ namespace SharedLibrary.Azure
         {
             var snDir = GetContainerReference(containerName).GetDirectoryReference(InstallationId);
             BlobContinuationToken continuationToken = null;
-             var blobs = new ConcurrentBag<CloudBlockBlob>();
+            var blobs = new ConcurrentBag<CloudBlockBlob>();
 
             do
             {
@@ -53,12 +57,12 @@ namespace SharedLibrary.Azure
 
         public async Task<CloudBlockBlob> GetBlockBlobReference(string zip, string containerName = "installations")
         {
-            if (blobBLocks == null || !blobBLocks.Any())
+            if (_blobBLocks == null || !_blobBLocks.Any())
             {
-                blobBLocks = await GetAllBlobsAsync();
+                _blobBLocks = await GetAllBlobsAsync();
             }
 
-            CloudBlockBlob blobFile = blobBLocks.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
+            CloudBlockBlob blobFile = _blobBLocks.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
             if (blobFile == null)
             {
                 LogError($"Blob '{zip}' in installation '{InstallationId}' does not exist.");
