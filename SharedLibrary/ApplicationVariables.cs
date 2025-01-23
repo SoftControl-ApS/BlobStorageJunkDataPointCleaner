@@ -28,6 +28,9 @@ namespace SharedLibrary
         }
 
         public static IConfiguration Configuration { get; }
+        public static object locktotalFile { get; } = new object();
+        public static List<string> FailedFiles = new List<string>();
+
 
         #region Private Fields
         internal static double MaxEnergyInJoules { get; set; }

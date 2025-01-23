@@ -19,33 +19,37 @@ namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
-        public async Task<bool> LetTheMagicHappen(DateOnly date)
+        public async Task<string> LetTheMagicHappen(DateOnly date)
         {
-            var result = await ReadAndErase(date);
+            var file = await ReadBlobFile(GetFileName(date, FileType.Day));
 
-            return false;
+            if (!IsValidJson(file))
+                return null;
+
+            var result = await ReadAndErase(date);
+            return result;
         }
 
         private async Task<string> ReadAndErase(DateOnly date)
         {
-            await HandleDayFiles(date);
-            var res = await CleanYearDays(date);
-            if (res)
-                Title("Cleaning done");
-            else
-                Title("No cleaning needed");
+            ////await HandleDayFiles(date);
+            //var res = await CleanYearDays(date);
+            //if (res)
+            //    Log("Cleaning done");
+            //else
+            //    Log("No cleaning needed");
 
             await DeleteAllYearFilesExceptDays(date);
-            Title("Deleted all yearFiles");
+            Log("Deleted all yearFiles");
 
             await PDToPm(date);
-            Title("PD -> PM DONE");
+            Log($"PD -> PM DONE {date.Year}");
 
             await PMToYear(date);
-            Title("PM - > Year DONE");
+            Log($"PM - > Year DONE {date.Year}");
 
             await YearToPT(date);
-            Title("Year -> PT DONE");
+            Log($"Year -> PT DONE {date.Year}");
 
 
 
@@ -120,91 +124,112 @@ namespace SharedLibrary.Azure
 
         public async Task<string> PMToYear(DateOnly date)
         {
-            // PM -> PY 🧸
-            var yearMonthsFiles = await GetYear_MonthFilessAsync(date);
-
-            var inverters = InitializeInverters(ProductionDto.FromJson(await ReadBlobFile("pt")).Inverters);
-
-            var productions = new List<ProductionDto>();
-            Parallel.ForEach(yearMonthsFiles, month =>
+            try
             {
-                var prod = ProductionDto.FromJson(month.DataJson);
-                productions.Add(prod);
-            });
-            productions.OrderBy(x => x.TimeStamp);
 
-            foreach (var inverter in inverters)
-            {
-                foreach (var production in productions)
+
+                // PM -> PY 🧸
+                var yearMonthsFiles = await GetYear_MonthFilessAsync(date);
+
+                var inverters = InitializeInverters(ProductionDto.FromJson(await ReadBlobFile("pt")).Inverters);
+
+                var productions = new List<ProductionDto>();
+                Parallel.ForEach(yearMonthsFiles, month =>
                 {
-                    double totalProduction = 0;
-                    var inv = production.Inverters.First(x => x.Id == inverter.Id);
-                    double sum = (double)inv.Production.Sum(x => x.Value);
-                    totalProduction += sum;
+                    var prod = ProductionDto.FromJson(month.DataJson);
+                    productions.Add(prod);
+                });
+                productions.OrderBy(x => x.TimeStamp);
 
-                    inverter.Production.Add(new DataPoint()
+                foreach (var inverter in inverters)
+                {
+                    foreach (var production in productions)
                     {
-                        Quality = 1,
-                        TimeStamp = new DateTime(production.TimeStamp.Value.Year, production.TimeStamp.Value.Month, 1),
-                        Value = totalProduction
-                    });
+                        double totalProduction = 0;
+                        var inv = production.Inverters.First(x => x.Id == inverter.Id);
+                        double sum = (double)inv.Production.Sum(x => x.Value);
+                        totalProduction += sum;
+
+                        inverter.Production.Add(new DataPoint()
+                        {
+                            Quality = 1,
+                            TimeStamp = new DateTime(production.TimeStamp.Value.Year, production.TimeStamp.Value.Month, 1),
+                            Value = totalProduction
+                        });
+                    }
+
+                    inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
                 }
 
-                inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
+                var productionYear = new ProductionDto()
+                {
+                    Inverters = inverters.ToList(),
+                    TimeType = (int)FileType.Year,
+                    TimeStamp = new DateTime(date.Year, 1, 1)
+                };
+
+                await UploadProduction(productionYear, FileType.Year);
+                var jsonResult = await ReadBlobFile($"py{date.Year:D4}");
+
+                return jsonResult;
+
             }
-
-            var productionYear = new ProductionDto()
+            catch (Exception e)
             {
-                Inverters = inverters.ToList(),
-                TimeType = (int)FileType.Year,
-                TimeStamp = new DateTime(date.Year, 1, 1)
-            };
-
-            await UploadProduction(productionYear, FileType.Year);
-            var jsonResult = await ReadBlobFile($"py{date.Year:D4}");
-
-            return jsonResult;
+                LogError($"YearFailed : {date.Year}" + e.Message);
+            }
+            return null;
         }
 
-        async Task<string> YearToPT(DateOnly? date = null)
+        async Task<string> YearToPT(DateOnly date)
         {
-            //PY -> PT -> clouuudddd 🔥
-            var productions = await GetYearsAsync();
-            var inverters = InitializeInverters((ProductionDto.FromJson(await ReadBlobFile("pt"))).Inverters);
-
-            Parallel.ForEach(inverters, inverter =>
+            try
             {
-                foreach (var production in productions)
+                //PY -> PT -> clouuudddd 🔥
+                var productions = await GetYearsAsync();
+                var inverters = InitializeInverters((ProductionDto.FromJson(await ReadBlobFile("pt"))).Inverters);
+
+                Parallel.ForEach(inverters, inverter =>
                 {
-                    double totalProduction = 0;
-                    var inv = production.Inverters.First(x => x.Id == inverter.Id);
-                    double sum = (double)inv.Production.Sum(x => x.Value);
-                    totalProduction += sum;
-
-                    inverter.Production.Add(new DataPoint()
+                    foreach (var production in productions)
                     {
-                        Quality = 1,
-                        TimeStamp = new DateTime(production.TimeStamp.Value.Year, 12, 31),
-                        Value = totalProduction
-                    });
+                        double totalProduction = 0;
+                        var inv = production.Inverters.First(x => x.Id == inverter.Id);
+                        double sum = (double)inv.Production.Sum(x => x.Value);
+                        totalProduction += sum;
+
+                        inverter.Production.Add(new DataPoint()
+                        {
+                            Quality = 1,
+                            TimeStamp = new DateTime(production.TimeStamp.Value.Year, 12, 31),
+                            Value = totalProduction
+                        });
+                    }
+
+                    inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
+                });
+
+
+                var productionTotal = new ProductionDto()
+                {
+                    Inverters = inverters.ToList(),
+                    TimeType = (int)FileType.Total,
+                    TimeStamp = new DateTime(2014, 1, 1)
+                };
+
+                lock (ApplicationVariables.locktotalFile)
+                {
+                    var res = UploadProduction(productionTotal, FileType.Total).Result;
                 }
+                var jsonResult = await ReadBlobFile($"pt");
 
-                inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
-            });
-
-
-            var productionTotal = new ProductionDto()
+                return jsonResult;
+            }
+            catch (Exception e)
             {
-                Inverters = inverters.ToList(),
-                TimeType = (int)FileType.Total,
-                TimeStamp = new DateTime(2014, 1, 1)
-            };
-
-
-            await UploadProduction(productionTotal, FileType.Total);
-            var jsonResult = await ReadBlobFile($"pt");
-
-            return jsonResult;
+                LogError($"TotalFile failed :" + e.Message);
+            }
+            return null;
         }
 
         public async Task<bool> CreatAndUploadProduction(List<Inverter> inverters, FileType fileType)
@@ -298,11 +323,9 @@ namespace SharedLibrary.Azure
 
             await CreatAndUploadProduction(inverters.ToList(), FileType.Month);
             return await ReadBlobFile(
-                $"pm{
-                    inverters.First()
+                $"pm{inverters.First()
                     .Production.First()
-                    .TimeStamp.Value.Year}{
-                    inverters.First()
+                    .TimeStamp.Value.Year}{inverters.First()
                     .Production.First()
                     .TimeStamp.Value.Month:D2}");
         }

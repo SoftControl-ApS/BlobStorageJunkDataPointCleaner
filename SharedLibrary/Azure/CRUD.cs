@@ -52,7 +52,7 @@ namespace SharedLibrary.Azure
             return await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
         }
 
-        public async Task<string> ReadBlobFile(string fileName, string sn = null, bool createIfNotFoud = false)
+        public async Task<string> ReadBlobFile(string fileName, string sn = null)
         {
             if (string.IsNullOrEmpty(sn) && !string.IsNullOrEmpty(InstallationId))
             {
@@ -63,18 +63,9 @@ namespace SharedLibrary.Azure
                 throw new ArgumentException("Either 'InstallationId' or'sn' parameter must be provided.");
             }
 
-            string json;
-            if (createIfNotFoud)
-            {
-                json = ReadBlobFileAndCreateIfNotFound(fileName + ".json", fileName + ".zip", sn).Result;
-                Log($"Created and Read file {fileName} successfully", ConsoleColor.Yellow);
-            }
-            else
-            {
-                json = ReadBlobFile(fileName + ".json", fileName + ".zip", sn).Result;
-                Log($"Read file {fileName} successfully", ConsoleColor.DarkYellow);
-            }
-            await initBlobBlocks();
+            var json = ReadBlobFile(fileName + ".json", fileName + ".zip", sn).Result;
+            Log($"Read file {fileName} successfully", ConsoleColor.DarkYellow);
+
             return json;
         }
 
@@ -98,68 +89,24 @@ namespace SharedLibrary.Azure
 
             try
             {
-                var a = await blobFile.ExistsAsync();
-                if (a == false)
-                    throw new NullReferenceException(nameof(a));
+                var blobFileExists = await blobFile.ExistsAsync();
+                if (!blobFileExists)
+                {
+                    SharedLibrary.ApplicationVariables.FailedFiles.Add(fileName);
+                    return "NOTFOUND";
+
+                }
             }
             catch (NullReferenceException e)
             {
+                SharedLibrary.ApplicationVariables.FailedFiles.Add(fileName);
                 LogError(e.Message);
                 return "NOTFOUND";
+
             }
 
             using (var zipStream = new MemoryStream())
             {
-                await blobFile.DownloadToStreamAsync(zipStream);
-                ZipArchive archive = new ZipArchive(zipStream);
-                ZipArchiveEntry zipArchiveEntry = archive.GetEntry(fileName);
-                using (StreamReader sr = new StreamReader(zipArchiveEntry.Open()))
-                {
-                    json = await sr.ReadToEndAsync();
-                }
-            }
-
-            return json;
-        }
-
-        public async Task<string> ReadBlobFileAndCreateIfNotFound(string fileName, string zipFileName, string sn = null, bool acquireLock = true)
-        {
-            if (string.IsNullOrEmpty(sn) && !string.IsNullOrEmpty(InstallationId))
-                sn = InstallationId;
-            else if (string.IsNullOrEmpty(sn) && string.IsNullOrEmpty(InstallationId))
-                throw new ArgumentException("Either 'InstallationId' or'sn' parameter must be provided.");
-
-            if (!zipFileName.EndsWith(".zip"))
-                throw new ArgumentException("file name must end with .zip", nameof(zipFileName));
-            if (!fileName.EndsWith(".json"))
-                throw new ArgumentException("file name must end with .zip", nameof(fileName));
-
-            string json = "null";
-
-            CloudBlockBlob blobFile = await GetBlockBlobReference(zipFileName, sn);
-
-            using (var zipStream = new MemoryStream())
-            {
-                try
-                {
-                    await blobFile.ExistsAsync();
-                }
-                catch (NullReferenceException e)
-                {
-                    LogError(e.Message);
-
-                    if (fileName.Contains("py"))
-                    {
-                        return await GenerateAndUploadEmptyYearFile(fileName);
-                    }
-                    if (fileName.Contains("dp"))
-                    {
-                        return await GenerateAndUploadEmptyDayFile(fileName);
-                    }
-
-                    return "NOTFOUND";
-                }
-
                 await blobFile.DownloadToStreamAsync(zipStream);
                 ZipArchive archive = new ZipArchive(zipStream);
                 ZipArchiveEntry zipArchiveEntry = archive.GetEntry(fileName);
@@ -218,6 +165,7 @@ namespace SharedLibrary.Azure
             if (!exists)
             {
                 LogError($"Blob '{zip}' in installation '{installationId}' does not exist.");
+                SharedLibrary.ApplicationVariables.FailedFiles.Add(zip);
                 return;
             }
 

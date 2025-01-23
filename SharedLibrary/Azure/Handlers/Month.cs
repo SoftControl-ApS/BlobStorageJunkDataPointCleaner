@@ -61,7 +61,7 @@ public partial class AzureBlobCtrl
         for (int day = 1; day <= daysInMonth; day++)
         {
             var updatedName = fileName + $"{day:D2}";
-            jsonResponse = await ReadBlobFile(updatedName, createIfNotFoud: true);
+            jsonResponse = await ReadBlobFile(updatedName);
 
             var production = ProductionDto.FromJson(jsonResponse);
             var inverter = production.Inverters.FirstOrDefault(x => x.Id == InverterId);

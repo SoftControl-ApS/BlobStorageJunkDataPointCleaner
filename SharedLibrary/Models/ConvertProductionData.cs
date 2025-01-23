@@ -16,18 +16,22 @@ public partial class ProductionDto
 {
     public static ProductionDto FromJson(string json)
     {
-        // Replace NaN with null
-        json = json.Replace("NaN", "null");
+        if (SharedLibrary.Azure.AzureBlobCtrl.IsValidJson(json))
+        {
+            // Replace NaN with null
+            json = json.Replace("NaN", "null");
 
-        try
-        {
-            return JsonConvert.DeserializeObject<ProductionDto>(json, Converter.Settings);
+            try
+            {
+                return JsonConvert.DeserializeObject<ProductionDto>(json, Converter.Settings);
+            }
+            catch (JsonReaderException ex)
+            {
+                LogError($"JSON Deserialization Error: {ex.Message}. JSON: {json}");
+                throw; // or handle accordingly
+            }
         }
-        catch (JsonReaderException ex)
-        {
-            LogError($"JSON Deserialization Error: {ex.Message}. JSON: {json}");
-            throw; // or handle accordingly
-        }
+        return null;
     }
 
     public static string ToJson(ProductionDto production)

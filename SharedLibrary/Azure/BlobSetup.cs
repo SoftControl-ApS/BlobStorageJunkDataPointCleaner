@@ -66,6 +66,7 @@ namespace SharedLibrary.Azure
             if (blobFile == null)
             {
                 LogError($"Blob '{zip}' in installation '{InstallationId}' does not exist.");
+                SharedLibrary.ApplicationVariables.FailedFiles.Add(zip);
             }
 
             return blobFile;
