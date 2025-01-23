@@ -42,7 +42,6 @@ namespace SharedLibrary.Azure
             }
             Log($"{fileName} production object was created", ConsoleColor.Yellow);
 
-            await initBlobBlocks();
             return true;
         }
         #endregion
@@ -147,12 +146,11 @@ namespace SharedLibrary.Azure
                     await blobFile.UploadFromStreamAsync(compressed).ConfigureAwait(false);
                 }
             }
-            await initBlobBlocks();
             return true;
         }
         #endregion
         #region Delete
-        public async Task DeleteBlobFile(string zip, string installationId,
+        public async Task<bool> DeleteBlobFile(string zip, string installationId,
                                          string containerName = "installations")
         {
             if (!zip.EndsWith(".zip"))
@@ -166,7 +164,7 @@ namespace SharedLibrary.Azure
             {
                 LogError($"Blob '{zip}' in installation '{installationId}' does not exist.");
                 SharedLibrary.ApplicationVariables.FailedFiles.Add(zip);
-                return;
+                return false;
             }
 
             try
@@ -180,7 +178,8 @@ namespace SharedLibrary.Azure
 
             }
 
-            await initBlobBlocks();
+            var allBlobs = await GetAllBlobsAsync();
+            return allBlobs.Any(blobfile => blobfile.Name.Contains(zip));
         }
         public async Task<bool> DeleteBlobFileIfExist(string zip, string containerName = "installations")
         {
@@ -200,22 +199,16 @@ namespace SharedLibrary.Azure
 
             var allBlobs = await GetAllBlobsAsync();
 
-            if (allBlobs.Any(blobfile => blobfile.Name.Contains(zip)))
-                return false;
-            else
-            {
-                await initBlobBlocks();
-                return true;
-            }
+            return allBlobs.Any(blobfile => blobfile.Name.Contains(zip));
 
         }
-        public async Task DeleteBlobFile(string zip,
+        public async Task<bool> DeleteBlobFile(string zip,
                                          string containerName = "installations")
         {
             if (string.IsNullOrEmpty(InstallationId))
                 throw new ArgumentException("InstallationId' parameter must be provided.");
 
-            await DeleteBlobFile(zip, InstallationId, containerName);
+            return await DeleteBlobFile(zip, InstallationId, containerName);
         }
         #endregion
     }

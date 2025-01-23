@@ -172,12 +172,12 @@ public partial class AzureBlobCtrl
         }
     }
 
-    private async Task<string> GenerateAndUploadEmptyDayFile(string fileName)
-    {
-        var date = ExtractDateFromFileName(fileName);
+    //private async Task<string> GenerateAndUploadEmptyDayFile(string fileName)
+    //{
+    //    var date = ExtractDateFromFileName(fileName);
 
-        return await GenerateAndUploadEmptyDayFile(date, CancellationToken.None);
-    }
+    //    return await GenerateAndUploadEmptyDayFile(date, CancellationToken.None);
+    //}
 
     private async Task<string> GenerateAndUploadEmptyDayFile(DateOnly date, CancellationToken cancellationToken)
     {
@@ -214,7 +214,7 @@ public partial class AzureBlobCtrl
 
     async Task<string> GetDayFile(DateOnly date)
     {
-        string fileName = $"pd{date.Year:D4}{date.Year:D2}{date.Year:D2}";
+        string fileName = $"pd{date.Year}{date.Year:D2}{date.Year:D2}";
         var json = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
 
         //if (IsValidJson(json))
@@ -224,15 +224,14 @@ public partial class AzureBlobCtrl
     }
 
 
-    ConcurrentDictionary<string, string> failedFilesName = new ConcurrentDictionary<string, string>();
 
 
     async Task<HoodProduction?> GetDayFile(int currentMonth, int currentDay, DateOnly date)
     {
         string customTaskId = $"{currentMonth}/{currentDay}";
 
-        string fileName = $"pd{date.Year:D4}{currentMonth:D2}{currentDay:D2}";
-        var json = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
+        string fileName = $"pd{date.Year}{currentMonth:D2}{currentDay:D2}";
+        var json = await ReadBlobFile(fileName + ".json", fileName + ".zip");
 
         if (IsValidJson(json))
         {
@@ -248,20 +247,19 @@ public partial class AzureBlobCtrl
             }
             catch (Exception ex)
             {
-                failedFilesName[fileName] = ex.ToString();
+                ApplicationVariables.FailedFiles.Add(fileName);
                 LogError($"Task ID: {customTaskId} - Error Parsing Json: {fileName}");
-                LogError(ex.Message, ConsoleColor.DarkRed);
                 return null;
             }
         }
 
-        failedFilesName[fileName] = json;
-        LogError($"Task ID: {customTaskId} - Invalid Json: fileName {fileName} Content:\n{json}");
+        ApplicationVariables.FailedFiles.Add(fileName);
+        LogError($"Task ID: {customTaskId} - Invalid Json: fileName {fileName} Content:{json}");
         return null;
     }
 
 
-    async Task<ConcurrentBag<HoodProduction>> GetYear_DayFilesAsync(DateOnly date)
+    async Task<ConcurrentBag<HoodProduction>> GetYearDayFiles(DateOnly date)
     {
         ConcurrentBag<HoodProduction> dayFiles = new ConcurrentBag<HoodProduction>();
         List<Task> tasks = new List<Task>();

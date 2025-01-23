@@ -8,27 +8,27 @@ namespace SharedLibrary.Azure;
 
 public partial class AzureBlobCtrl
 {
-    public async Task<string> UpdateTotalFile(DateOnly date)
-    {
-        string fileName = "pt";
-        var originalJson = await ReadBlobFile($"{fileName}.json", $"{fileName}.zip", this.InstallationId);
-        if (originalJson == "NOTFOUND")
-        {
-            LogError("failed to UpdateTotalFile, since total file was not foud : " + InstallationId);
-            return null;
-        }
-        var fetchedProductionData = ProductionDto.FromJson(originalJson);
-        var updatedInverters = await GetUpdatedInverterYearProductionData(fetchedProductionData.Inverters, date);
+    //public async Task<string> UpdateTotalFile(DateOnly date)
+    //{
+    //    string fileName = "pt";
+    //    var originalJson = await ReadBlobFile($"{fileName}.json", $"{fileName}.zip", this.InstallationId);
+    //    if (originalJson == "NOTFOUND")
+    //    {
+    //        LogError("failed to UpdateTotalFile, since total file was not foud : " + InstallationId);
+    //        return null;
+    //    }
+    //    var fetchedProductionData = ProductionDto.FromJson(originalJson);
+    //    var updatedInverters = await GetUpdatedInverterYearProductionData(fetchedProductionData.Inverters, date);
 
-        var updatedProduction = FinalHandle(fetchedProductionData, updatedInverters, date);
-        var updatedJson = ProductionDto.ToJson(updatedProduction);
+    //    var updatedProduction = FinalHandle(fetchedProductionData, updatedInverters, date);
+    //    var updatedJson = ProductionDto.ToJson(updatedProduction);
 
-        await BackupAndReplaceOriginalFile(fileName, originalJson, updatedJson);
+    //    await BackupAndReplaceOriginalFile(fileName, originalJson, updatedJson);
 
-        Title("Finished year" + date.ToString());
+    //    Title("Finished year" + date.ToString());
 
-        return updatedJson;
-    }
+    //    return updatedJson;
+    //}
 
     ProductionDto FinalHandle(ProductionDto oldProduction, List<Inverter> updatedInverters, DateOnly date)
     {
@@ -72,21 +72,21 @@ public partial class AzureBlobCtrl
         return productionTotal;
     }
 
-    private async Task<List<Inverter>> GetUpdatedInverterYearProductionData(
-        IEnumerable<Inverter> inverters, DateOnly date)
-    {
-        try
-        {
-            var totalProduction = await UpdateYearFiles(date, UpdateType.Read);
-            return ProductionDto.FromJson(totalProduction).Inverters;
-        }
-        catch (Exception e)
-        {
-            LogError($"Error: {e}");
-        }
+    //private async Task<List<Inverter>> GetUpdatedInverterYearProductionData(
+    //    IEnumerable<Inverter> inverters, DateOnly date)
+    //{
+    //    try
+    //    {
+    //        var totalProduction = await UpdateYearFiles(date, UpdateType.Read);
+    //        return ProductionDto.FromJson(totalProduction).Inverters;
+    //    }
+    //    catch (Exception e)
+    //    {
+    //        LogError($"Error: {e}");
+    //    }
 
-        return null;
-    }
+    //    return null;
+    //}
 
     async Task<ConcurrentBag<ProductionDto>> GetYearsAsync()
     {
@@ -94,7 +94,7 @@ public partial class AzureBlobCtrl
 
         for (int year = DateTime.Now.Year; year >= 2014; year--)
         {
-            string response = await ReadBlobFile($"py{year:D4}");
+            string response = await ReadBlobFile($"py{year}");
 
             if (IsValidJson(response))
             {

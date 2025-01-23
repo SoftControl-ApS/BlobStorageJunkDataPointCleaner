@@ -32,26 +32,28 @@ namespace SharedLibrary.Azure
 
         private async Task<string> ReadAndErase(DateOnly date)
         {
-            ////await HandleDayFiles(date);
-            //var res = await CleanYearDays(date);
-            //if (res)
-            //    Log("Cleaning done");
-            //else
-            //    Log("No cleaning needed");
+            // //await HandleDayFiles(date);
+            // var res = await CleanYearDays(date);
+            // if (res)
+            //     Log($"Cleaning done {date.Year}");
+            // else
+            //     Log($"No cleaning needed {date.Year}");
 
-            await DeleteAllYearFilesExceptDays(date);
-            Log("Deleted all yearFiles");
+            // await initBlobBlocks();
+            //await DeleteAllYearFilesExceptDays(date);
+            // Log("Deleted all yearFiles");
 
-            await PDToPm(date);
+            await UpdatePDtoPM(date).ConfigureAwait(false);
             Log($"PD -> PM DONE {date.Year}");
+            await initBlobBlocks().ConfigureAwait(false); ;
 
-            await PMToYear(date);
+            await PMToYear(date).ConfigureAwait(false); ;
             Log($"PM - > Year DONE {date.Year}");
-
-            await YearToPT(date);
+            await initBlobBlocks().ConfigureAwait(false); ;
+            
+            await YearToPT(date).ConfigureAwait(false); ;
             Log($"Year -> PT DONE {date.Year}");
-
-
+            await initBlobBlocks().ConfigureAwait(false); ;
 
             return "success";
         }
@@ -81,7 +83,7 @@ namespace SharedLibrary.Azure
                         {
                             if (production.Value >= ApplicationVariables.MaxEnergyInJoules)
                             {
-                                Log($"{fileName}\tInverter: {inv.Id}\tValue: {production.Value}");
+                                Log($"{fileName}\tInverter: {inv.Id}\tValue: {production.Value} date {production.TimeStamp.Value.ToString()}");
                                 production.Value = 0;
                                 didChange = true;
                             }
@@ -105,18 +107,24 @@ namespace SharedLibrary.Azure
             return true;
         }
 
-        async Task PDToPm(DateOnly date)
+        async Task UpdatePDtoPM(DateOnly date)
         {
             //PD -> PM -> clouuudddd 🔥
-            var daysFiles = await GetYear_DayFilesAsync(date);
-            var filteredDayFiles = daysFiles.OrderBy(x => x.Date)
+            var yearDays = await GetYearDayFiles(date);
+            var daysFile = yearDays.OrderBy(x => x.Date)
                                             .GroupBy(x => x.Date.Month)
                                             .ToList();
 
             var monthTasks = new List<Task>();
-            foreach (var month in filteredDayFiles)
+            foreach (var month in daysFile)
             {
-                monthTasks.Add(HandleMonthMagically_AndUploadThem(month.ToList()));
+
+                monthTasks.Add(Task.Run(async () =>
+                {
+                    var result = await HandleMonthMagically_AndUploadThem(month.ToList());
+                    return result;
+
+                }));
             }
 
             await Task.WhenAll(monthTasks);
@@ -169,7 +177,7 @@ namespace SharedLibrary.Azure
                 };
 
                 await UploadProduction(productionYear, FileType.Year);
-                var jsonResult = await ReadBlobFile($"py{date.Year:D4}");
+                var jsonResult = await ReadBlobFile($"py{date.Year}");
 
                 return jsonResult;
 
@@ -245,16 +253,16 @@ namespace SharedLibrary.Azure
             switch (fileType)
             {
                 case FileType.Day:
-                    productionMont.TimeStamp = new DateTime(date.Year, date.Minute, date.Day);
-                    fileName = $"pd{date.Year:D4}{date.Month:D2}{date.Day:D2}";
+                    productionMont.TimeStamp = new DateTime(date.Year, date.Month, date.Day);
+                    fileName = $"pd{date.Year}{date.Month:D2}{date.Day:D2}";
                     break;
                 case FileType.Month:
                     productionMont.TimeStamp = new DateTime(date.Year, date.Month, 1);
-                    fileName = $"pm{date.Year:D4}{date.Month:D2}";
+                    fileName = $"pm{date.Year}{date.Month:D2}";
                     break;
                 case FileType.Year:
                     productionMont.TimeStamp = new DateTime(date.Year, 1, 1);
-                    fileName = $"py{date.Year:D4}";
+                    fileName = $"py{date.Year}";
                     break;
                 case FileType.Total:
                     productionMont.TimeStamp = new DateTime(2000, 1, 1);
@@ -273,7 +281,7 @@ namespace SharedLibrary.Azure
 
             string prodDay = $"{production.TimeStamp.Value.Day:D2}";
             string prodMonth = $"{production.TimeStamp.Value.Month:D2}";
-            string prodYear = $"{production.TimeStamp.Value.Year:D4}";
+            string prodYear = $"{production.TimeStamp.Value.Year}";
 
             switch (fileType)
             {
@@ -300,7 +308,7 @@ namespace SharedLibrary.Azure
             var inverters = InitializeInverters(ProductionDto.FromJson(month.FirstOrDefault().DataJson).Inverters);
             Parallel.ForEach(inverters, inverter =>
             {
-                foreach (var day in month)
+                Parallel.ForEach(month, day =>
                 {
                     double totalMonthProduction = 0;
                     ProductionDto productionDay = ProductionDto.FromJson(day.DataJson);
@@ -317,17 +325,19 @@ namespace SharedLibrary.Azure
                                 productionDay.TimeStamp.Value.Month, productionDay.TimeStamp.Value.Day),
                             Value = totalMonthProduction
                         });
-                }
+
+                });
+
+                inverter.Production=  inverter.Production.OrderBy(x => x.TimeStamp).ToList();
             });
 
 
-            await CreatAndUploadProduction(inverters.ToList(), FileType.Month);
-            return await ReadBlobFile(
-                $"pm{inverters.First()
-                    .Production.First()
-                    .TimeStamp.Value.Year}{inverters.First()
-                    .Production.First()
-                    .TimeStamp.Value.Month:D2}");
+            var result = await CreatAndUploadProduction(inverters.ToList(), FileType.Month);
+
+            if (result)
+                return "Success";
+            else
+                return null;
         }
 
         async Task<bool> DeleteAllYearFilesExceptDays(DateOnly date, FileType fileType = FileType.Day)

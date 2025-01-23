@@ -66,22 +66,22 @@ namespace SharedLibrary.Azure
             }
         }
 
-        private async Task<string> FixFile(FileType fileType, DateOnly date)
-        {
-            switch (fileType)
-            {
-                case FileType.Day:
-                    return await HandleDayFiles(date);
-                case FileType.Month:
-                    return await UpdateMonthFiles(date);
-                case FileType.Year:
-                    return await UpdateYearFiles(date);
-                case FileType.Total:
-                    return await UpdateTotalFile(date);
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(fileType), fileType, null);
-            }
-        }
+        //private async Task<string> FixFile(FileType fileType, DateOnly date)
+        //{
+        //    switch (fileType)
+        //    {
+        //        case FileType.Day:
+        //            return await HandleDayFiles(date);
+        //        case FileType.Month:
+        //            return await UpdateMonthFiles(date);
+        //        case FileType.Year:
+        //            return await UpdateYearFiles(date);
+        //        case FileType.Total:
+        //            return await UpdateTotalFile(date);
+        //        default:
+        //            throw new ArgumentOutOfRangeException(nameof(fileType), fileType, null);
+        //    }
+        //}
 
 
         private List<Inverter> InitializeInvertersToList(IEnumerable<Inverter> inverters)
@@ -95,90 +95,90 @@ namespace SharedLibrary.Azure
             Parallel.ForEach(inverters, inverter =>
             {
                 updatedInverters.Add(new Inverter
-                                     {
-                                         Id = inverter.Id,
-                                         Production = new List<DataPoint>(),
-                                     });
+                {
+                    Id = inverter.Id,
+                    Production = new List<DataPoint>(),
+                });
             });
             return updatedInverters;
         }
 
-        private async Task<List<Inverter>> UpdateInverterProductionData(IEnumerable<Inverter> inverters, int year)
-        {
-            var updatedInverters = InitializeInvertersToList(inverters);
-            var tasks = inverters.SelectMany(inverter => Enumerable.Range(1, 12).Select(month => Task.Run(async () =>
-            {
-                var dateTime = new DateTime(year, month, 1);
-                var date = DateOnly.FromDateTime(dateTime);
+        //private async Task<List<Inverter>> UpdateInverterProductionData(IEnumerable<Inverter> inverters, int year)
+        //{
+        //    var updatedInverters = InitializeInvertersToList(inverters);
+        //    var tasks = inverters.SelectMany(inverter => Enumerable.Range(1, 12).Select(month => Task.Run(async () =>
+        //    {
+        //        var dateTime = new DateTime(year, month, 1);
+        //        var date = DateOnly.FromDateTime(dateTime);
 
-                double? totalProduction = await GetInverterTotalMonthProduction(date, (int)inverter.Id);
-                if (totalProduction == null)
-                {
-                    updatedInverters.First(inv => inv.Id == inverter.Id).Production.Add(new DataPoint
-                        {
-                            TimeStamp = dateTime,
-                            Quality = 1,
-                            Value = 0
-                        });
-                }
-                else
-                {
-                    updatedInverters.First(inv => inv.Id == inverter.Id).Production.Add(new DataPoint
-                        {
-                            TimeStamp = dateTime,
-                            Quality = 1,
-                            Value = totalProduction
-                        });
-                }
-            })));
+        //        double? totalProduction = await GetInverterTotalMonthProduction(date, (int)inverter.Id);
+        //        if (totalProduction == null)
+        //        {
+        //            updatedInverters.First(inv => inv.Id == inverter.Id).Production.Add(new DataPoint
+        //                {
+        //                    TimeStamp = dateTime,
+        //                    Quality = 1,
+        //                    Value = 0
+        //                });
+        //        }
+        //        else
+        //        {
+        //            updatedInverters.First(inv => inv.Id == inverter.Id).Production.Add(new DataPoint
+        //                {
+        //                    TimeStamp = dateTime,
+        //                    Quality = 1,
+        //                    Value = totalProduction
+        //                });
+        //        }
+        //    })));
 
-            await Task.WhenAll(tasks);
-            return OrderInverterDataPointsByDate(updatedInverters);
-        }
+        //    await Task.WhenAll(tasks);
+        //    return OrderInverterDataPointsByDate(updatedInverters);
+        //}
 
-        private async Task<List<Inverter>> UpdateInverterProductionData(
-            IEnumerable<Inverter> inverters, DateOnly date)
-        {
-            var updatedInverters = new ConcurrentBag<Inverter>();
-            var tasks = new List<Task>();
-            var daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
+        //private async Task<List<Inverter>> UpdateInverterProductionData(
+        //    IEnumerable<Inverter> inverters, DateOnly date)
+        //{
+        //    var updatedInverters = new ConcurrentBag<Inverter>();
+        //    var tasks = new List<Task>();
+        //    var daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
 
-            foreach (var inverter in inverters)
-            {
-                updatedInverters.Add(new Inverter
-                                     {
-                                         Id = inverter.Id,
-                                         Production = new List<DataPoint>(),
-                                     });
+        //    foreach (var inverter in inverters)
+        //    {
+        //        updatedInverters.Add(new Inverter
+        //                             {
+        //                                 Id = inverter.Id,
+        //                                 Production = new List<DataPoint>(),
+        //                             });
 
-                for (int day = 1; day <= daysInMonth; day++)
-                {
-                    var datapointTimeStamp = new DateTime((int)date.Year, (int)date.Month, day);
-                    var reqDate = DateOnly.FromDateTime(datapointTimeStamp);
-                    double totalProduction = (double)await GetInverterTotalMonthProduction(reqDate, (int)inverter.Id);
+        //        for (int day = 1; day <= daysInMonth; day++)
+        //        {
+        //            var datapointTimeStamp = new DateTime((int)date.Year, (int)date.Month, day);
+        //            var reqDate = DateOnly.FromDateTime(datapointTimeStamp);
+        //            double totalProduction = (double)await GetInverterTotalMonthProduction(reqDate, (int)inverter.Id);
 
-                    updatedInverters.First(inv => inv.Id == inverter.Id)
-                                    .Production.Add(new DataPoint
-                                                    {
-                                                        TimeStamp = datapointTimeStamp,
-                                                        Quality = 1,
-                                                        Value = totalProduction
-                                                    });
-                }
-            }
+        //            updatedInverters.First(inv => inv.Id == inverter.Id)
+        //                            .Production.Add(new DataPoint
+        //                                            {
+        //                                                TimeStamp = datapointTimeStamp,
+        //                                                Quality = 1,
+        //                                                Value = totalProduction
+        //                                            });
+        //        }
+        //    }
 
-            return updatedInverters.ToList();
-        }
+        //    return updatedInverters.ToList();
+        //}
 
         private ProductionDto CreateUpdatedProductionDto(ProductionDto oldProduction,
                                                          IList<Inverter> inverters)
         {
             return new ProductionDto
-                   {
-                       Inverters = inverters.ToList(),
-                       TimeType = oldProduction.TimeType,
-                       TimeStamp = oldProduction.TimeStamp,
-                   };
+            {
+                Inverters = inverters.ToList(),
+                TimeType = oldProduction.TimeType,
+                TimeStamp = oldProduction.TimeStamp,
+            };
         }
 
         private int ExtractYearFromFileName(string fileName)

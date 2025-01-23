@@ -29,46 +29,46 @@ public partial class AzureBlobCtrl
         var a = initBlobBlocks().Result;
     }
 
-    public async Task<bool> UpDateAllFiles(DateOnly date)
-    {
-        var yearsResult = new ConcurrentDictionary<DateOnly, string>();
-        var monthsResult = new ConcurrentDictionary<DateOnly, string>();
-        try
-        {
-            for (int year = date.Year; year >= date.Year - 2; year--)
-            {
-                for (int month = 1; month <= 12; month++)
-                {
-                    var thisDatte = DateOnly.FromDateTime(new DateTime(date.Year, month, 1));
-                    monthsResult.TryAdd(thisDatte, await UpDateDataPointFiles(thisDatte, FileType.Month));
-                }
+    //public async Task<bool> UpDateAllFiles(DateOnly date)
+    //{
+    //    var yearsResult = new ConcurrentDictionary<DateOnly, string>();
+    //    var monthsResult = new ConcurrentDictionary<DateOnly, string>();
+    //    try
+    //    {
+    //        for (int year = date.Year; year >= date.Year - 2; year--)
+    //        {
+    //            for (int month = 1; month <= 12; month++)
+    //            {
+    //                var thisDatte = DateOnly.FromDateTime(new DateTime(date.Year, month, 1));
+    //                monthsResult.TryAdd(thisDatte, await UpDateDataPointFiles(thisDatte, FileType.Month));
+    //            }
 
-                yearsResult.TryAdd(date, await UpDateDataPointFiles(date, FileType.Year));
-            }
+    //            yearsResult.TryAdd(date, await UpDateDataPointFiles(date, FileType.Year));
+    //        }
 
-            if (yearsResult.ToList().Any(res => res.Value != "null"))
-            {
-                LogError($"Some data points were not reachable");
+    //        if (yearsResult.ToList().Any(res => res.Value != "null"))
+    //        {
+    //            LogError($"Some data points were not reachable");
 
 
-                var total = await UpDateDataPointFiles(date, FileType.Total);
-            }
+    //            var total = await UpDateDataPointFiles(date, FileType.Total);
+    //        }
 
-            return true;
-        }
-        catch (Exception ex)
-        {
-            LogError($"Error updating data: {ex.Message}");
-            return false;
-        }
-    }
+    //        return true;
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        LogError($"Error updating data: {ex.Message}");
+    //        return false;
+    //    }
+    //}
 
-    public async Task<string> UpDateDataPointFiles(DateOnly date, FileType fileType)
-    {
-        Title($"Update Production Data for {fileType}", ConsoleColor.Cyan);
+    //public async Task<string> UpDateDataPointFiles(DateOnly date, FileType fileType)
+    //{
+    //    Title($"Update Production Data for {fileType}", ConsoleColor.Cyan);
 
-        return await FixFile(fileType, date);
-    }
+    //    return await FixFile(fileType, date);
+    //}
 
     private async Task BackupAndReplaceOriginalFile(string fileName, string? originalJson, string updatedJson)
     {
@@ -78,11 +78,10 @@ public partial class AzureBlobCtrl
             return;
         }
         fileName = GetFileName(fileName);
-        await DeleteBlobFileIfExist($"{fileName}_BackUp");          // Backup                 
-        if (originalJson != null)
-            await CreateAndUploadBlobFile(originalJson, $"{fileName}_BackUp"); // Delete original
-        await DeleteBlobFileIfExist(fileName);                      // Delete original
-        await WriteJson(updatedJson, fileName);              // Upload updated
+
+        if (fileName.Contains("pd"))
+            await ForcePublish($"{fileName}_BackUp", originalJson);
+        await ForcePublish(fileName, updatedJson);
     }
     private async Task<string> ForcePublish(string fileName, string json)
     {
@@ -95,7 +94,6 @@ public partial class AzureBlobCtrl
         fileName = GetFileName(fileName);
         await DeleteBlobFileIfExist(fileName); // Delete original
         await CreateAndUploadBlobFile(json, fileName); // Upload updated
-
         return "";
     }
 }

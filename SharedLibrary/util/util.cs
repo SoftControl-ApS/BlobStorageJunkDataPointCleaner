@@ -50,13 +50,13 @@ namespace SharedLibrary.util
             switch (filetype)
             {
                 case FileType.Day:
-                    fileName = $"pd{date.Year:D4}{date.Month:D2}{date.Day:D2}";
+                    fileName = $"pd{date.Year}{date.Month:D2}{date.Day:D2}";
                     break;
                 case FileType.Month:
-                    fileName = $"pm{date.Year:D4}{date.Month:D2}";
+                    fileName = $"pm{date.Year}{date.Month:D2}";
                     break;
                 case FileType.Year:
-                    fileName = $"py{date.Year:D4}";
+                    fileName = $"py{date.Year}";
                     break;
                 case FileType.Total:
                     fileName = $"pt";
