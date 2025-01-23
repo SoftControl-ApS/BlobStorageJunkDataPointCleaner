@@ -43,30 +43,25 @@ namespace SharedLibrary.util
             return fileName;
         }
 
-        public static string GetFileName(DateOnly date, FileType file)
+        public static string GetFileName(DateOnly date, FileType filetype)
         {
 
-            switch (file)
+            var fileName = string.Empty;
+            switch (filetype)
             {
+                case FileType.Day:
+                    fileName = $"pd{date.Year:D4}{date.Month:D2}{date.Day:D2}";
+                    break;
+                case FileType.Month:
+                    fileName = $"pm{date.Year:D4}{date.Month:D2}";
+                    break;
+                case FileType.Year:
+                    fileName = $"py{date.Year:D4}";
+                    break;
                 case FileType.Total:
-                    
+                    fileName = $"pt";
                     break;
             }
-
-
-            return $"{date.Year}";
-
-            var fileName = Path.GetFileName(blob.Name);
-
-            if (fileName.EndsWith(".zip"))
-            {
-                fileName = fileName.Substring(0, fileName.Length - 4);
-            }
-            else if (fileName.EndsWith(".json"))
-            {
-                fileName = fileName.Substring(0, fileName.Length - 5);
-            }
-
             return fileName;
         }
     }

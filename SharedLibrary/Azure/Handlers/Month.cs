@@ -123,27 +123,27 @@ public partial class AzureBlobCtrl
         return "null";
     }
 
-    async Task<HoodProduction> GetYear_MonthFilessAsync(DateOnly date)
+    async Task<List<HoodProduction>> GetYear_MonthFilessAsync(DateOnly date)
     {
         var monthsFiles = new List<HoodProduction>();
 
         for (int month = 1; month <= 12; month++)
         {
-            var currentMonth = month;
-            var requestDate = new DateTime(date.Year, month, 1);
+            var requestDate = new DateOnly(date.Year, month, 1);
 
-            GetFileName
-            var result = await ReadBlobFile($"pd:{date.Year}{date.Month}");
+            string filename =  GetFileName(requestDate, FileType.Month);
+            var result = await ReadBlobFile(filename);
 
             var year = new HoodProduction()
             {
                 FileType = FileType.Year,
-                Date = new DateOnly(date.Year, 1, 1),
-                DataJson = monthsFiles.ToList()
+                Date = new DateOnly(date.Year, month, 1),
+                DataJson = result
             };
-            monthsFiles.Add(year):
-            return year;
+
+            monthsFiles.Add(year);
         }
+        return monthsFiles;
     }
 
     async Task<HoodProduction?> GenerateYearFile(int currentMonth, DateOnly date)
