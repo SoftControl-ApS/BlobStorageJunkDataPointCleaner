@@ -93,21 +93,23 @@ namespace SharedLibrary.Azure
             string json = "null";
 
             CloudBlockBlob blobFile = await GetBlockBlobReference(zipFileName, sn);
+            if (blobFile == null)
+                return "NOTFOUND";
+
+            try
+            {
+                var a = await blobFile.ExistsAsync();
+                if (a == false)
+                    throw new NullReferenceException(nameof(a));
+            }
+            catch (NullReferenceException e)
+            {
+                LogError(e.Message);
+                return "NOTFOUND";
+            }
 
             using (var zipStream = new MemoryStream())
             {
-                try
-                {
-                    var a = await blobFile.ExistsAsync();
-                    if (a == false)
-                        throw new NullReferenceException(nameof(a));
-                }
-                catch (NullReferenceException e)
-                {
-                    LogError(e.Message);
-                    return "NOTFOUND";
-                }
-
                 await blobFile.DownloadToStreamAsync(zipStream);
                 ZipArchive archive = new ZipArchive(zipStream);
                 ZipArchiveEntry zipArchiveEntry = archive.GetEntry(fileName);
@@ -216,11 +218,18 @@ namespace SharedLibrary.Azure
             if (!exists)
             {
                 LogError($"Blob '{zip}' in installation '{installationId}' does not exist.");
+                return;
             }
-            else
+
+            try
             {
-                var result = await blobFile.DeleteIfExistsAsync();
-                Log($"Blob '{zip}' in installation '{installationId}' deleted {result}.");
+                await blobFile.DeleteAsync();
+                Log($"Blob '{zip}' in installation '{installationId}' deleted.");
+            }
+            catch (Exception e)
+            {
+                LogError($"Blob '{zip}' in installation '{installationId}' failed to delete {e.Message}.");
+
             }
 
             await initBlobBlocks();
@@ -235,6 +244,7 @@ namespace SharedLibrary.Azure
                 CloudBlobContainer container = GetContainerReference(containerName);
                 var blobFile = container.GetBlockBlobReference($"{InstallationId}/{zip}");
                 await blobFile.DeleteIfExistsAsync();
+                Log($"Blob '{zip}' in installation '{InstallationId}' deleted.");
             }
             catch (Exception ex)
             { return false; LogError("Could not delete zip " + zip); LogError(ex.ToString()); }
@@ -245,7 +255,11 @@ namespace SharedLibrary.Azure
             if (allBlobs.Any(blobfile => blobfile.Name.Contains(zip)))
                 return false;
             else
+            {
+                await initBlobBlocks();
                 return true;
+            }
+
         }
         public async Task DeleteBlobFile(string zip,
                                          string containerName = "installations")

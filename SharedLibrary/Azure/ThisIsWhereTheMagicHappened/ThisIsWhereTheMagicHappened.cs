@@ -28,27 +28,28 @@ namespace SharedLibrary.Azure
 
         private async Task<string> ReadAndErase(DateOnly date)
         {
-            //var res = await CleanYearDays(date);
-            //if (res)
-            //    Title("Cleaning done");
-            //else
-            //    Title("No cleaning needed");
+            await HandleDayFiles(date);
+            var res = await CleanYearDays(date);
+            if (res)
+                Title("Cleaning done");
+            else
+                Title("No cleaning needed");
 
-            //await DeleteAllYearFilesExceptDays(date);
-            //Title("Deleted all yearFiles");
+            await DeleteAllYearFilesExceptDays(date);
+            Title("Deleted all yearFiles");
 
-            //await PDToPm(date);
-            //Title("PD -> PM DONE");
+            await PDToPm(date);
+            Title("PD -> PM DONE");
 
-            //await PMToYear(date);
-            //Title("PM - > Year DONE");
+            await PMToYear(date);
+            Title("PM - > Year DONE");
 
             await YearToPT(date);
             Title("Year -> PT DONE");
 
 
 
-            return await HandleDayFiles(date);
+            return "success";
         }
 
 
@@ -100,24 +101,6 @@ namespace SharedLibrary.Azure
             return true;
         }
 
-        async Task YearToPT(DateOnly date)
-        {
-            //PD -> PM -> clouuudddd 🔥
-            var daysFiles = await GetYear_DayFilesAsync(date);
-            var filteredDayFiles = daysFiles.OrderBy(x => x.Date)
-                                            .GroupBy(x => x.Date.Month)
-                                            .ToList();
-
-            var monthTasks = new List<Task>();
-            foreach (var month in filteredDayFiles)
-            {
-                monthTasks.Add(HandleMonthMagically_AndUploadThem(month.ToList()));
-            }
-
-            await Task.WhenAll(monthTasks);
-            await initBlobBlocks();
-        }
-        
         async Task PDToPm(DateOnly date)
         {
             //PD -> PM -> clouuudddd 🔥
@@ -133,7 +116,6 @@ namespace SharedLibrary.Azure
             }
 
             await Task.WhenAll(monthTasks);
-            await initBlobBlocks();
         }
 
         public async Task<string> PMToYear(DateOnly date)
@@ -184,6 +166,47 @@ namespace SharedLibrary.Azure
             return jsonResult;
         }
 
+        async Task<string> YearToPT(DateOnly? date = null)
+        {
+            //PY -> PT -> clouuudddd 🔥
+            var productions = await GetYearsAsync();
+            var inverters = InitializeInverters((ProductionDto.FromJson(await ReadBlobFile("pt"))).Inverters);
+
+            Parallel.ForEach(inverters, inverter =>
+            {
+                foreach (var production in productions)
+                {
+                    double totalProduction = 0;
+                    var inv = production.Inverters.First(x => x.Id == inverter.Id);
+                    double sum = (double)inv.Production.Sum(x => x.Value);
+                    totalProduction += sum;
+
+                    inverter.Production.Add(new DataPoint()
+                    {
+                        Quality = 1,
+                        TimeStamp = new DateTime(production.TimeStamp.Value.Year, 12, 31),
+                        Value = totalProduction
+                    });
+                }
+
+                inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
+            });
+
+
+            var productionTotal = new ProductionDto()
+            {
+                Inverters = inverters.ToList(),
+                TimeType = (int)FileType.Total,
+                TimeStamp = new DateTime(2014, 1, 1)
+            };
+
+
+            await UploadProduction(productionTotal, FileType.Total);
+            var jsonResult = await ReadBlobFile($"pt");
+
+            return jsonResult;
+        }
+
         public async Task<bool> CreatAndUploadProduction(List<Inverter> inverters, FileType fileType)
         {
             var date = inverters.First().Production.First().TimeStamp.Value;
@@ -219,7 +242,7 @@ namespace SharedLibrary.Azure
             return await CreateAndUploadBlobFile(productionJson, fileName);
         }
 
-        public async Task<bool> UploadProduction(ProductionDto production, FileType fileType)
+        public async Task<string> UploadProduction(ProductionDto production, FileType fileType)
         {
             string fileName = string.Empty;
 
@@ -239,13 +262,12 @@ namespace SharedLibrary.Azure
                     fileName = $"py{prodYear}";
                     break;
                 case FileType.Total:
-                    production.TimeStamp = new DateTime(2000, 1, 1);
                     fileName = $"pt";
                     break;
             }
 
             var productionJson = ProductionDto.ToJson(production);
-            return await CreateAndUploadBlobFile(productionJson, fileName);
+            return await ForcePublish(fileName, productionJson);
         }
 
         private async Task<string> HandleMonthMagically_AndUploadThem(List<HoodProduction> month)
@@ -276,7 +298,13 @@ namespace SharedLibrary.Azure
 
             await CreatAndUploadProduction(inverters.ToList(), FileType.Month);
             return await ReadBlobFile(
-                $"pm{inverters.First().Production.First().TimeStamp.Value.Year}{inverters.First().Production.First().TimeStamp.Value.Month:D2}");
+                $"pm{
+                    inverters.First()
+                    .Production.First()
+                    .TimeStamp.Value.Year}{
+                    inverters.First()
+                    .Production.First()
+                    .TimeStamp.Value.Month:D2}");
         }
 
         async Task<bool> DeleteAllYearFilesExceptDays(DateOnly date, FileType fileType = FileType.Day)
@@ -299,8 +327,6 @@ namespace SharedLibrary.Azure
                 }
 
                 await Task.WhenAll(tasks).ConfigureAwait(false);
-
-                await initBlobBlocks();
                 return true;
             }
             catch (Exception e)
@@ -336,19 +362,4 @@ namespace SharedLibrary.Azure
 
         public string DataJson { get; set; }
     }
-
-    public class HoodYearProduction
-    {
-        public FileType FileType { get; set; }
-        public DateOnly Date { get; set; }
-        public List<HoodProduction> Data { get; set; }
-    }
-
-    public class ProdList()
-    {
-        public TimeSpan Time { get; set; }
-        public ProductionDto Productions { get; set; }
-
-    }
-
 }

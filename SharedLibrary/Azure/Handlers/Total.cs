@@ -1,6 +1,7 @@
 ﻿using Microsoft.WindowsAzure.Storage.Shared.Protocol;
 using SharedLibrary.Models;
 using SharedLibrary.util;
+using System.Collections.Concurrent;
 using static SharedLibrary.util.Util;
 
 namespace SharedLibrary.Azure;
@@ -29,11 +30,8 @@ public partial class AzureBlobCtrl
         return updatedJson;
     }
 
-
-
     ProductionDto FinalHandle(ProductionDto oldProduction, List<Inverter> updatedInverters, DateOnly date)
     {
-
 
         foreach (var inverter in updatedInverters)
         {
@@ -88,5 +86,33 @@ public partial class AzureBlobCtrl
         }
 
         return null;
+    }
+
+    async Task<ConcurrentBag<ProductionDto>> GetYearsAsync()
+    {
+        var productions = new ConcurrentBag<ProductionDto>();
+
+        for (int year = DateTime.Now.Year; year >= 2014; year--)
+        {
+            string response = await ReadBlobFile($"py{year:D4}");
+
+            if (IsValidJson(response))
+            {
+                var yearProd = ProductionDto.FromJson(response);
+                productions.Add(yearProd);
+            }
+            else
+            {
+            }
+
+        }
+
+        return productions;
+    }
+
+    class ProductionDtoTotal
+    {
+        public DateOnly Date { get; set; }
+        public ProductionDto Production { get; set; }
     }
 }

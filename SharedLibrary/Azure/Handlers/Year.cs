@@ -173,8 +173,6 @@ public partial class AzureBlobCtrl
 
         await WriteJson(json, $"py{date.Year}");
 
-        await initBlobBlocks();
-
         return json;
     }
 
@@ -213,7 +211,7 @@ public partial class AzureBlobCtrl
     }
     async Task<ConcurrentBag<Inverter>> GetInstallationInvertersConcurentBag()
     {
-        ProductionDto fetchedData = null;
+        ProductionDto? fetchedData = null;
         int tempYear = DateTime.Now.Year + 1;
         do
         {

@@ -208,8 +208,6 @@ public partial class AzureBlobCtrl
 
         await WriteJson(json, $"py{date.Year}");
 
-        await initBlobBlocks();
-
         return json;
     }
 

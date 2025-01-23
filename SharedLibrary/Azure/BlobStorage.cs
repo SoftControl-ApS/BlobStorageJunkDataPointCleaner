@@ -26,7 +26,7 @@ public partial class AzureBlobCtrl
     {
         this.ContainerName = containerName;
         this.InstallationId = installationId;
-        var res = initBlobBlocks().Result;
+        var a = initBlobBlocks().Result;
     }
 
     public async Task<bool> UpDateAllFiles(DateOnly date)
@@ -83,5 +83,19 @@ public partial class AzureBlobCtrl
             await CreateAndUploadBlobFile(originalJson, $"{fileName}_BackUp"); // Delete original
         await DeleteBlobFileIfExist(fileName);                      // Delete original
         await WriteJson(updatedJson, fileName);              // Upload updated
+    }
+    private async Task<string> ForcePublish(string fileName, string json)
+    {
+        if (IsValidJson(json) == null)
+        {
+            LogError("updated Json is null");
+            throw new ArgumentNullException("Invalid json file");
+        }
+
+        fileName = GetFileName(fileName);
+        await DeleteBlobFileIfExist(fileName); // Delete original
+        await CreateAndUploadBlobFile(json, fileName); // Upload updated
+
+        return "";
     }
 }
