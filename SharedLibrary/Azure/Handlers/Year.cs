@@ -27,63 +27,63 @@ public partial class AzureBlobCtrl
     //}
 
 
-    private async Task<string> ReadYearProductionFiles(string fileName)
-    {
-        int year = ExtractYearFromFileName(fileName);
-        double totalProduction = 0;
-        var updatedProduction = new ProductionDto()
-        {
-            TimeType = (int)FileType.Year
-        };
+    //private async Task<string> ReadYearProductionFiles(string fileName)
+    //{
+    //    int year = ExtractYearFromFileName(fileName);
+    //    double totalProduction = 0;
+    //    var updatedProduction = new ProductionDto()
+    //    {
+    //        TimeType = (int)FileType.Year
+    //    };
 
-        ConcurrentBag<Inverter> inverters = await GetInstallationInvertersConcurentBag();
+    //    ConcurrentBag<Inverter> inverters = await GetInstallationInvertersConcurentBag();
 
-        for (int month = 1; month <= 12; month++)
-        {
-            var monthProductionFileName = $"pm{year}{month:D2}";
+    //    for (int month = 1; month <= 12; month++)
+    //    {
+    //        var monthProductionFileName = $"pm{year}{month:D2}";
 
-            string? monthJson = await ReadBlobFile(monthProductionFileName);
-            if (!string.IsNullOrEmpty(monthJson) || monthJson != "NOTFOUND")
-            {
-                try
-                {
-                    var fetchedProduction = ProductionDto.FromJson(monthJson);
+    //        string? monthJson = await ReadBlobFile(monthProductionFileName);
+    //        if (!string.IsNullOrEmpty(monthJson) || monthJson != "NOTFOUND")
+    //        {
+    //            try
+    //            {
+    //                var fetchedProduction = ProductionDto.FromJson(monthJson);
 
-                    foreach (var inverterMonth in fetchedProduction.Inverters)
-                    {
-                        inverters.FirstOrDefault(x => x.Id == inverterMonth.Id).Production.Add(new DataPoint()
-                        {
-                            TimeStamp = new DateTime(year, month, 1),
-                            Value = fetchedProduction
-                            .Inverters
-                            .First(x => x.Id == inverterMonth.Id)
-                            .Production
-                            .Sum(x => x.Value)
-                        });
-                    }
-                }
-                catch (Exception e)
-                {
-                    LogError("Json error" + monthJson);
-                }
-            }
-            else
-            {
-                foreach (var inverter in inverters)
-                {
-                    inverter.Production.Add(new DataPoint()
-                    {
-                        TimeStamp = new DateTime(year, month, 1),
-                        Value = 0,
-                        Quality = 0
-                    });
-                }
-            }
+    //                foreach (var inverterMonth in fetchedProduction.Inverters)
+    //                {
+    //                    inverters.FirstOrDefault(x => x.Id == inverterMonth.Id).Production.Add(new DataPoint()
+    //                    {
+    //                        TimeStamp = new DateTime(year, month, 1),
+    //                        Value = fetchedProduction
+    //                        .Inverters
+    //                        .First(x => x.Id == inverterMonth.Id)
+    //                        .Production
+    //                        .Sum(x => x.Value)
+    //                    });
+    //                }
+    //            }
+    //            catch (Exception e)
+    //            {
+    //                LogError("Json error" + monthJson);
+    //            }
+    //        }
+    //        else
+    //        {
+    //            foreach (var inverter in inverters)
+    //            {
+    //                inverter.Production.Add(new DataPoint()
+    //                {
+    //                    TimeStamp = new DateTime(year, month, 1),
+    //                    Value = 0,
+    //                    Quality = 0
+    //                });
+    //            }
+    //        }
 
-        }
+    //    }
 
-        return null;
-    }
+    //    return null;
+    //}
 
     //private async Task<string> UpdateYearFiles(string fileName)
     //{
@@ -194,6 +194,7 @@ public partial class AzureBlobCtrl
         ProductionDto fetchedData = ProductionDto.FromJson(response);
         return InitializeInvertersToList(fetchedData.Inverters);
     }
+
     async Task<ConcurrentBag<Inverter>> GetInstallationInvertersConcurentBag()
     {
         var fetchedInverter = await GetInstallationInverters();

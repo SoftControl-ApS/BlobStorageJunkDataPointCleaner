@@ -92,7 +92,14 @@ namespace SharedLibrary.Azure
                     }
                 }
 
-            return json;
+                return json;
+
+            }
+            catch (Exception e)
+            {
+                LogError("" + e.Message);
+            }
+            return null;
         }
 
         #endregion
@@ -120,7 +127,7 @@ namespace SharedLibrary.Azure
 
                     compressed.Seek(0, SeekOrigin.Begin);
                     compressed.Position = 0;
-                    await blobFile.UploadFromStreamAsync(compressed).ConfigureAwait(false);
+                    await blobFile.UploadFromStreamAsync(compressed);
                 }
             }
             return true;

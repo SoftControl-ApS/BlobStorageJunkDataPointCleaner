@@ -11,53 +11,53 @@ namespace SharedLibrary.Azure;
 
 public partial class AzureBlobCtrl
 {
-    public async Task<bool> GenerateDayFile(DateOnly date)
-    {
-        var fileName = $"pd{date.Year}{date.Month:D2}{date.Day:D2}";
-        var originalJson = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
-        ProductionDto productionDto = null;
-        if (originalJson != "NOTFOUND")
-        {
-            productionDto = ProductionDto.FromJson(originalJson);
-            Parallel.ForEach(productionDto.Inverters, inv =>
-            {
-                foreach (var production in inv.Production)
-                {
-                    if (production.Value >= ApplicationVariables.MaxEnergyInJoules)
-                    {
-                        production.Value = 0;
-                    }
-                }
-            });
+    //public async Task<bool> GenerateDayFile(DateOnly date)
+    //{
+    //    var fileName = $"pd{date.Year}{date.Month:D2}{date.Day:D2}";
+    //    var originalJson = await ReadBlobFile(fileName);
+    ProductionDto productionDto = null;
+    //    if (originalJson != "NOTFOUND")
+    //    {
+    //        productionDto = ProductionDto.FromJson(originalJson);
+    //        Parallel.ForEach(productionDto.Inverters, inv =>
+    //        {
+    //            foreach (var production in inv.Production)
+    //            {
+    //                if (production.Value >= ApplicationVariables.MaxEnergyInJoules)
+    //                {
+    //                    production.Value = 0;
+    //                }
+    //            }
+    //        });
 
-            var updatedJson = ProductionDto.ToJson(productionDto);
-            await BackupAndReplaceOriginalFile(fileName, null, updatedJson);
-            return true;
-        }
-        else if (originalJson == "NOTFOUND")
-        {
-            var datetime = DateTime.SpecifyKind(new DateTime(date, new TimeOnly(0, 0, 0)), DateTimeKind.Utc);
-            productionDto = new ProductionDto()
-            {
-                TimeType = (int)FileType.Day,
-                TimeStamp = datetime,
-                Inverters = await GetInstallationInverters()
-            };
+    //        var updatedJson = ProductionDto.ToJson(productionDto);
+    //        await BackupAndReplaceOriginalFile(fileName, null, updatedJson);
+    //        return true;
+    //    }
+    //    else if (originalJson == "NOTFOUND")
+    //    {
+    //        var datetime = DateTime.SpecifyKind(new DateTime(date, new TimeOnly(0, 0, 0)), DateTimeKind.Utc);
+    //        productionDto = new ProductionDto()
+    //        {
+    //            TimeType = (int)FileType.Day,
+    //            TimeStamp = datetime,
+    //            Inverters = await GetInstallationInverters()
+    //        };
 
-            Parallel.ForEach(productionDto.Inverters, inv =>
-            {
-                inv.Production = CreateEmptyDayDatapointList(date);
-            });
+    //        Parallel.ForEach(productionDto.Inverters, inv =>
+    //        {
+    //            inv.Production = CreateEmptyDayDatapointList(date);
+    //        });
 
 
-            var updatedJson = ProductionDto.ToJson(productionDto);
-            await CreateAndUploadBlobFile(updatedJson, fileName);
+    //        var updatedJson = ProductionDto.ToJson(productionDto);
+    //        await CreateAndUploadBlobFile(updatedJson, fileName);
 
-            return true;
-        }
+    //        return true;
+    //    }
 
-        return false;
-    }
+    //    return false;
+    //}
 
     //private List<DataPoint> CreateEmptyDayDatapointList(DateOnly date)
     //{
