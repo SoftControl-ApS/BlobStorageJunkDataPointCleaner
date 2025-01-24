@@ -186,56 +186,22 @@ public partial class AzureBlobCtrl
 
     async Task<List<Inverter>> GetInstallationInverters()
     {
-        ProductionDto fetchedData = null;
-        int tempYear = DateTime.Now.Year + 1;
-        do
-        {
-            try
-            {
-                tempYear -= 1;
-
-                var response = await ReadBlobFile($"py{tempYear}");
-                fetchedData = ProductionDto.FromJson(response);
-            }
-            catch (Exception)
-            {
-                // Ignore}
-            }
-
+        var response = await ReadBlobFile($"pt");
+        if (!IsValidJson(response))
+        { 
+            throw new Exception("GetInstallationInverters failed"); 
         }
-        while (fetchedData == null);
-
+        ProductionDto fetchedData = ProductionDto.FromJson(response);
         return InitializeInvertersToList(fetchedData.Inverters);
-
-
     }
     async Task<ConcurrentBag<Inverter>> GetInstallationInvertersConcurentBag()
     {
-        ProductionDto? fetchedData = null;
-        int tempYear = DateTime.Now.Year + 1;
-        do
-        {
-            try
-            {
-                tempYear -= 1;
-
-                var response = await ReadBlobFile($"py{tempYear}");
-                fetchedData = ProductionDto.FromJson(response);
-            }
-            catch (Exception)
-            {
-                // Ignore}
-            }
-
-        }
-        while (fetchedData == null);
-
+        var fetchedInverter = await GetInstallationInverters();
         var result = new ConcurrentBag<Inverter>();
-        Parallel.ForEach(InitializeInvertersToList(fetchedData.Inverters), item =>
+        Parallel.ForEach(InitializeInvertersToList(fetchedInverter), item =>
         {
             result.Add(item);
         });
-
         return result;
     }
 

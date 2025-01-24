@@ -59,26 +59,26 @@ public partial class AzureBlobCtrl
         return false;
     }
 
-    private List<DataPoint> CreateEmptyDayDatapointList(DateOnly date)
-    {
-        var dataPoints = new List<DataPoint>();
-        for (int i = 0; i < 24; i++)
-        {
-            dataPoints.Add(new DataPoint()
-            {
-                Quality = 0,
-                TimeStamp = DateTime.SpecifyKind(new DateTime(date, new TimeOnly(i, 0, 0)), DateTimeKind.Utc),
-                Value = 0
+    //private List<DataPoint> CreateEmptyDayDatapointList(DateOnly date)
+    //{
+    //    var dataPoints = new List<DataPoint>();
+    //    for (int i = 0; i < 24; i++)
+    //    {
+    //        dataPoints.Add(new DataPoint()
+    //        {
+    //            Quality = 0,
+    //            TimeStamp = DateTime.SpecifyKind(new DateTime(date, new TimeOnly(i, 0, 0)), DateTimeKind.Utc),
+    //            Value = 0
 
-            });
-        }
+    //        });
+    //    }
 
-        return dataPoints;
-    }
+    //    return dataPoints;
+    //}
 
     public async Task<string> HandleDayFiles(string fileName)
     {
-        var originalJson = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
+        var originalJson = await ReadBlobFile(fileName);
 
         var productionDto = ProductionDto.FromJson(originalJson);
         bool didChange = false;
@@ -172,58 +172,56 @@ public partial class AzureBlobCtrl
         }
     }
 
-    //private async Task<string> GenerateAndUploadEmptyDayFile(string fileName)
-    //{
-    //    var date = ExtractDateFromFileName(fileName);
-
-    //    return await GenerateAndUploadEmptyDayFile(date, CancellationToken.None);
-    //}
-
-    private async Task<string> GenerateAndUploadEmptyDayFile(DateOnly date, CancellationToken cancellationToken)
+    private async Task<string> GenerateAndUploadEmptyDayFile(string fileName)
     {
-        var datetime = DateTime.SpecifyKind(new DateTime(date, new TimeOnly(0, 0, 0)), DateTimeKind.Utc);
+        var date = ExtractDateFromFileName(fileName);
+
+        return await GenerateAndUploadEmptyDayFile(date);
+    }
+
+    private async Task<string> GenerateAndUploadEmptyDayFile(DateOnly date)
+    {
+        var datetime = new DateTime(date, new TimeOnly(0, 0, 0));
         var dayProduction = new ProductionDto()
-        {
-            TimeType = (int)FileType.Year,
-            TimeStamp = datetime,
-            Inverters = await GetInstallationInverters()
-        };
+                            {
+                                TimeType = (int)FileType.Day,
+                                TimeStamp = datetime,
+                                Inverters = await GetInstallationInverters()
+                            };
 
 
-        await Parallel.ForEachAsync(dayProduction.Inverters, cancellationToken, async (inverter, token) =>
+        await Parallel.ForEachAsync(dayProduction.Inverters, CancellationToken.None, async (inverter, token) =>
         {
             for (int hour = 0; hour < 24; hour++)
             {
                 var time = new TimeOnly(hour, 0, 0);
                 inverter.Production.Add(new DataPoint()
-                {
-                    Quality = 0,
-                    TimeStamp = DateTime.SpecifyKind(new DateTime(date, time), DateTimeKind.Utc),
-                    Value = 0
-                });
+                                        {
+                                            Quality = 0,
+                                            TimeStamp = new DateTime(date, time),
+                                            Value = 0
+                                        });
             }
         });
 
+
         var json = ProductionDto.ToJson(dayProduction);
 
-        await WriteJson(json, $"py{date.Year}");
+        await UploadProduction(dayProduction, FileType.Day);
 
         return json;
     }
-
 
     async Task<string> GetDayFile(DateOnly date)
     {
         string fileName = $"pd{date.Year}{date.Year:D2}{date.Year:D2}";
         var json = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
 
-        //if (IsValidJson(json))
-        return json;
-        //else
-        //return null;
+        if (IsValidJson(json))
+            return json;
+        else
+            return null;
     }
-
-
 
 
     async Task<HoodProduction?> GetDayFile(int currentMonth, int currentDay, DateOnly date)
@@ -231,33 +229,32 @@ public partial class AzureBlobCtrl
         string customTaskId = $"{currentMonth}/{currentDay}";
 
         string fileName = $"pd{date.Year}{currentMonth:D2}{currentDay:D2}";
-        var json = await ReadBlobFile(fileName + ".json", fileName + ".zip");
+
+        var json = await ReadBlobFile(fileName);
 
         if (IsValidJson(json))
         {
             try
             {
                 var result = new HoodProduction()
-                {
-                    DataJson = json,
-                    Date = new DateOnly(date.Year, currentMonth, currentDay),
-                    FileType = FileType.Day,
-                };
+                             {
+                                 DataJson = json,
+                                 Date = new DateOnly(date.Year, currentMonth, currentDay),
+                                 FileType = FileType.Day,
+                             };
                 return result;
             }
             catch (Exception ex)
             {
-                ApplicationVariables.FailedFiles.Add(fileName);
+                ApplicationVariables.FailedFiles.Add(new(fileName, "GetDayFile()"));
                 LogError($"Task ID: {customTaskId} - Error Parsing Json: {fileName}");
                 return null;
             }
         }
 
-        ApplicationVariables.FailedFiles.Add(fileName);
-        LogError($"Task ID: {customTaskId} - Invalid Json: fileName {fileName} Content:{json}");
+        ApplicationVariables.FailedFiles.Add(new(fileName, "GetDayFile()"));
         return null;
     }
-
 
     async Task<ConcurrentBag<HoodProduction>> GetYearDayFiles(DateOnly date)
     {
@@ -287,7 +284,6 @@ public partial class AzureBlobCtrl
         return dayFiles;
     }
 
-
     public static bool IsValidJson(string json)
     {
         if (string.IsNullOrEmpty(json) ||
@@ -295,6 +291,7 @@ public partial class AzureBlobCtrl
         {
             return false;
         }
+
         return true;
     }
 }

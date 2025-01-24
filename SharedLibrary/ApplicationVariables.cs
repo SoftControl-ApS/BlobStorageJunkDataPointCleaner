@@ -29,7 +29,20 @@ namespace SharedLibrary
 
         public static IConfiguration Configuration { get; }
         public static object locktotalFile { get; } = new object();
-        public static List<string> FailedFiles = new List<string>();
+        public static List<Failed> FailedFiles = new List<Failed>();
+
+        public class Failed
+        {
+            public string Name { get; set; }
+            public string Description { get; set; }
+
+            public Failed(string name, string desc)
+            {
+                Name = name;
+                Description = desc;
+            }
+
+        }
 
 
         #region Private Fields

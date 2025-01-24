@@ -48,27 +48,14 @@ namespace SharedLibrary.Azure
         #region Read
         public async Task<string> ReadBlobFile(string fileName)
         {
-            return await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
-        }
+            var json = await ReadBlobFile($"{fileName}.json", $"{fileName}.zip", InstallationId);
 
-        public async Task<string> ReadBlobFile(string fileName, string sn = null)
-        {
-            if (string.IsNullOrEmpty(sn) && !string.IsNullOrEmpty(InstallationId))
-            {
-                sn = InstallationId;
-            }
-            else if (string.IsNullOrEmpty(sn) && string.IsNullOrEmpty(InstallationId))
-            {
-                throw new ArgumentException("Either 'InstallationId' or'sn' parameter must be provided.");
-            }
-
-            var json = ReadBlobFile(fileName + ".json", fileName + ".zip", sn).Result;
-            Log($"Read file {fileName} successfully", ConsoleColor.DarkYellow);
-
+            if (!IsValidJson(json))
+                LogError($"READ: Invalid Json- {fileName} response {json}");
             return json;
         }
 
-        public async Task<string> ReadBlobFile(string fileName, string zipFileName, string sn = null, bool acquireLock = true)
+        public async Task<string> ReadBlobFile(string jsonFileName, string zipFileName, string? sn)
         {
             if (string.IsNullOrEmpty(sn) && !string.IsNullOrEmpty(InstallationId))
                 sn = InstallationId;
@@ -77,43 +64,33 @@ namespace SharedLibrary.Azure
 
             if (!zipFileName.EndsWith(".zip"))
                 throw new ArgumentException("file name must end with .zip", nameof(zipFileName));
-            if (!fileName.EndsWith(".json"))
-                throw new ArgumentException("file name must end with .zip", nameof(fileName));
+            if (!jsonFileName.EndsWith(".json"))
+                throw new ArgumentException("file name must end with .json", nameof(jsonFileName));
 
             string json = "null";
 
             CloudBlockBlob blobFile = await GetBlockBlobReference(zipFileName, sn);
             if (blobFile == null)
                 return "NOTFOUND";
-
             try
             {
-                var blobFileExists = await blobFile.ExistsAsync();
-                if (!blobFileExists)
+                using (var zipStream = new MemoryStream())
                 {
-                    SharedLibrary.ApplicationVariables.FailedFiles.Add(fileName);
-                    return "NOTFOUND";
-
+                    await blobFile.DownloadToStreamAsync(zipStream);
+                    ZipArchive archive = new ZipArchive(zipStream);
+                    ZipArchiveEntry? zipArchiveEntry = archive.GetEntry(jsonFileName);
+                    if (zipArchiveEntry != null)
+                    {
+                        using (StreamReader sr = new StreamReader(zipArchiveEntry.Open()))
+                        {
+                            json = await sr.ReadToEndAsync();
+                        }
+                    }
+                    else
+                    {
+                        LogError("ReadBlobFile() -> zip entry was null");
+                    }
                 }
-            }
-            catch (NullReferenceException e)
-            {
-                SharedLibrary.ApplicationVariables.FailedFiles.Add(fileName);
-                LogError(e.Message);
-                return "NOTFOUND";
-
-            }
-
-            using (var zipStream = new MemoryStream())
-            {
-                await blobFile.DownloadToStreamAsync(zipStream);
-                ZipArchive archive = new ZipArchive(zipStream);
-                ZipArchiveEntry zipArchiveEntry = archive.GetEntry(fileName);
-                using (StreamReader sr = new StreamReader(zipArchiveEntry.Open()))
-                {
-                    json = await sr.ReadToEndAsync();
-                }
-            }
 
             return json;
         }
@@ -150,37 +127,6 @@ namespace SharedLibrary.Azure
         }
         #endregion
         #region Delete
-        public async Task<bool> DeleteBlobFile(string zip, string installationId,
-                                         string containerName = "installations")
-        {
-            if (!zip.EndsWith(".zip"))
-            {
-                zip = zip + ".zip";
-            }
-
-            CloudBlockBlob blobFile = await GetBlockBlobReference(zip, containerName);
-            var exists = await blobFile.ExistsAsync();
-            if (!exists)
-            {
-                LogError($"Blob '{zip}' in installation '{installationId}' does not exist.");
-                SharedLibrary.ApplicationVariables.FailedFiles.Add(zip);
-                return false;
-            }
-
-            try
-            {
-                await blobFile.DeleteAsync();
-                Log($"Blob '{zip}' in installation '{installationId}' deleted.");
-            }
-            catch (Exception e)
-            {
-                LogError($"Blob '{zip}' in installation '{installationId}' failed to delete {e.Message}.");
-
-            }
-
-            var allBlobs = await GetAllBlobsAsync();
-            return allBlobs.Any(blobfile => blobfile.Name.Contains(zip));
-        }
         public async Task<bool> DeleteBlobFileIfExist(string zip, string containerName = "installations")
         {
             if (!zip.EndsWith(".zip"))
@@ -190,25 +136,14 @@ namespace SharedLibrary.Azure
             {
                 CloudBlobContainer container = GetContainerReference(containerName);
                 var blobFile = container.GetBlockBlobReference($"{InstallationId}/{zip}");
-                await blobFile.DeleteIfExistsAsync();
-                Log($"Blob '{zip}' in installation '{InstallationId}' deleted.");
+                var result = await blobFile.DeleteIfExistsAsync();
+                return result;
             }
             catch (Exception ex)
-            { return false; LogError("Could not delete zip " + zip); LogError(ex.ToString()); }
-
-
-            var allBlobs = await GetAllBlobsAsync();
-
-            return allBlobs.Any(blobfile => blobfile.Name.Contains(zip));
-
-        }
-        public async Task<bool> DeleteBlobFile(string zip,
-                                         string containerName = "installations")
-        {
-            if (string.IsNullOrEmpty(InstallationId))
-                throw new ArgumentException("InstallationId' parameter must be provided.");
-
-            return await DeleteBlobFile(zip, InstallationId, containerName);
+            {
+                LogError("Could not delete zip " + zip); LogError(ex.ToString());
+                return false;
+            }
         }
         #endregion
     }

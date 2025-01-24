@@ -18,11 +18,7 @@ namespace SharedLibrary.Models
         public static readonly JsonSerializerSettings Settings = new JsonSerializerSettings
         {
             MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
-            DateParseHandling = DateParseHandling.None,
-            Converters =
-        {
-            new IsoDateTimeConverter { DateTimeStyles = DateTimeStyles.AssumeUniversal }
-        },
+            DateParseHandling = DateParseHandling.DateTimeOffset,
             MissingMemberHandling = MissingMemberHandling.Ignore,
             NullValueHandling = NullValueHandling.Ignore
         };

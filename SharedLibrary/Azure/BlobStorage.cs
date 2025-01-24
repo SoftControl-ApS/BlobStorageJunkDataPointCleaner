@@ -26,7 +26,6 @@ public partial class AzureBlobCtrl
     {
         this.ContainerName = containerName;
         this.InstallationId = installationId;
-        var a = initBlobBlocks().Result;
     }
 
     //public async Task<bool> UpDateAllFiles(DateOnly date)
@@ -92,8 +91,8 @@ public partial class AzureBlobCtrl
         }
 
         fileName = GetFileName(fileName);
-        await DeleteBlobFileIfExist(fileName); // Delete original
-        await CreateAndUploadBlobFile(json, fileName); // Upload updated
-        return "";
+        var deleteREsult = await DeleteBlobFileIfExist(fileName); // Delete original
+        var publishResult = await CreateAndUploadBlobFile(json, fileName); // Upload updated
+        return await ReadBlobFile(fileName);
     }
 }

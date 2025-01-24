@@ -79,70 +79,76 @@ public partial class AzureBlobCtrl
     //}
 
 
-    private async Task<ConcurrentDictionary<string, double?>> GetTotalMonthProduction(DateOnly date, int InverterId)
-    {
-        string fileName = $"pd{date.Year}{date.Month:D2}";
-        var DataPoints = new ConcurrentDictionary<string, double?>();
-        int daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
-        string jsonResponse = String.Empty;
+    //private async Task<ConcurrentDictionary<string, double?>> GetTotalMonthProduction(DateOnly date, int InverterId)
+    //{
+    //    string fileName = $"pd{date.Year}{date.Month:D2}";
+    //    var DataPoints = new ConcurrentDictionary<string, double?>();
+    //    int daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
+    //    string jsonResponse = String.Empty;
 
 
-        for (int day = 1; day <= daysInMonth; day++)
-        {
-            var updatedName = fileName + $"{day:D2}";
-            jsonResponse = await ReadBlobFile(updatedName);
-            if (jsonResponse == "NOTFOUND")
-            {
-                jsonResponse = await GenerateProductionDayFile(updatedName);
-            }
+    //    for (int day = 1; day <= daysInMonth; day++)
+    //    {
+    //        var updatedName = fileName + $"{day:D2}";
+    //        jsonResponse = await ReadBlobFile(updatedName);
+    //        if (jsonResponse == "NOTFOUND")
+    //        {
+    //            jsonResponse = await GenerateProductionDayFile(updatedName);
+    //        }
 
-            var production = ProductionDto.FromJson(jsonResponse);
-            var inverter = production.Inverters.FirstOrDefault(x => x.Id == InverterId);
-            if (inverter != null)
-            {
-                DataPoints.TryAdd(updatedName, inverter.Production.Sum(x => x.Value));
-            }
-            else
-            {
-                LogError($"Could not Calculate month {date.Month} year {date.Year} total Production for {InverterId}");
-            }
-        }
+    //        var production = ProductionDto.FromJson(jsonResponse);
+    //        var inverter = production.Inverters.FirstOrDefault(x => x.Id == InverterId);
+    //        if (inverter != null)
+    //        {
+    //            DataPoints.TryAdd(updatedName, inverter.Production.Sum(x => x.Value));
+    //        }
+    //        else
+    //        {
+    //            LogError($"Could not Calculate month {date.Month} year {date.Year} total Production for {InverterId}");
+    //        }
+    //    }
 
-        return DataPoints;
-    }
+    //    return DataPoints;
+    //}
 
-    private async Task<string> GenerateProductionDayFile(string filename)
-    {
-        DateOnly date = ExtractDateFromFileName(filename);
+    //private async Task<string> GenerateProductionDayFile(string filename)
+    //{
+    //    DateOnly date = ExtractDateFromFileName(filename);
 
-        if (await GenerateDayFile(date))
-        {
-            return await ReadBlobFile(filename);
-        }
+    //    if (await GenerateDayFile(date))
+    //    {
+    //        return await ReadBlobFile(filename);
+    //    }
 
-        return "null";
-    }
+    //    return "null";
+    //}
 
     async Task<List<HoodProduction>> GetYear_MonthFilessAsync(DateOnly date)
     {
         var monthsFiles = new List<HoodProduction>();
+        var tasks = new List<Task<HoodProduction>>();
 
         for (int month = 1; month <= 12; month++)
         {
             var requestDate = new DateOnly(date.Year, month, 1);
+            string filename = GetFileName(requestDate, FileType.Month);
 
-            string filename =  GetFileName(requestDate, FileType.Month);
-            var result = await ReadBlobFile(filename);
-
-            var year = new HoodProduction()
+            // Start the asynchronous read operation and add the task to the list
+            tasks.Add(ReadBlobFile(filename).ContinueWith(result =>
             {
-                FileType = FileType.Year,
-                Date = new DateOnly(date.Year, month, 1),
-                DataJson = result
-            };
-
-            monthsFiles.Add(year);
+                return new HoodProduction()
+                {
+                    FileType = FileType.Year,
+                    Date = requestDate,
+                    DataJson = result.Result
+                };
+            }));
         }
+
+
+        var results = await Task.WhenAll(tasks);
+        monthsFiles.AddRange(results);
+
         return monthsFiles;
     }
 
