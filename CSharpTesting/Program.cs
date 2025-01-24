@@ -1,18 +1,21 @@
 ﻿using SharedLibrary;
 using SharedLibrary.Azure;
 using System.Diagnostics;
+using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using static SharedLibrary.util.Util;
 
 namespace CSharpTesting;
 
-class Program
+static class Program
 {
     public static async Task Main(string[] args)
     {
-        var installationId = "129";
+        var installationId = 102.ToString();
         var containerName = "installations";
-        var date = DateTime.Now;
+
+        var date = new DateTime(2025, 1, 1, 1, 1, 1, DateTimeKind.Utc);
+
         var energy = 3_600_000_000;
         SharedLibrary.ApplicationVariables.SetMaxEnergyInJoule(energy);
 
@@ -24,7 +27,7 @@ class Program
 
 
         var tasks = new List<Task>();
-        for (int i = 2014; i <= date.Year; i++)
+        for (int i = date.Year; i >= 2014; i--)
         {
             var year = i;
             tasks.Add(Task.Run(async () =>
@@ -34,23 +37,17 @@ class Program
             }));
         }
 
-        Stopwatch sw = new Stopwatch(); sw.Start();
+        Stopwatch sw = new Stopwatch();
+        sw.Start();
+        await Task.WhenAll(tasks);
 
         Log("Mission start");
-        await Task.WhenAll(tasks);
-        Log("Mission ended");
+
         sw.Stop();
-
         Log("Mission took" + sw.ElapsedMilliseconds / 1000 + "s");
-
         Log("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_");
         Title("FINNISHED");
 
-        //tasks.Add(instance.UpdateTotalFile(currentDate));
-        //}
-
-        var a = SharedLibrary.ApplicationVariables.FailedFiles.Distinct().ToList();
-
-
+        _ = SharedLibrary.ApplicationVariables.FailedFiles.GroupBy(x => x.Name).OrderBy(x => x.Count()).ToList();
     }
 }

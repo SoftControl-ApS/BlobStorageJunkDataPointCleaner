@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using static SharedLibrary.util.Util;
 using static System.Net.Mime.MediaTypeNames;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using static SharedLibrary.Azure.AzureBlobCtrl;
 
 namespace SharedLibrary.Azure
 {
@@ -32,28 +33,27 @@ namespace SharedLibrary.Azure
 
         private async Task<string> ReadAndErase(DateOnly date)
         {
-            // //await HandleDayFiles(date);
-            // var res = await CleanYearDays(date);
-            // if (res)
-            //     Log($"Cleaning done {date.Year}");
-            // else
-            //     Log($"No cleaning needed {date.Year}");
+            //await HandleDayFiles(date);
+            var res = await CleanYearDays(date);
+            if (res)
+                Log($"Cleaning done {date.Year}");
+            else
+                Log($"No cleaning needed {date.Year}");
 
-            // await initBlobBlocks();
             //await DeleteAllYearFilesExceptDays(date);
-            // Log("Deleted all yearFiles");
+            //Log($"Deleted all yearFiles {date.Year}");
 
-            await UpdatePDtoPM(date).ConfigureAwait(false);
+            await UpdatePDtoPM(date);
             Log($"PD -> PM DONE {date.Year}");
-            await initBlobBlocks().ConfigureAwait(false); ;
 
-            await PMToYear(date).ConfigureAwait(false); ;
+            await PMToYear(date);
             Log($"PM - > Year DONE {date.Year}");
-            await initBlobBlocks().ConfigureAwait(false); ;
-            
-            await YearToPT(date).ConfigureAwait(false); ;
+
+            lock (ApplicationVariables.locktotalFile)
+            {
+                var result = YearToPT(date).Result;
+            }
             Log($"Year -> PT DONE {date.Year}");
-            await initBlobBlocks().ConfigureAwait(false); ;
 
             return "success";
         }
@@ -61,9 +61,10 @@ namespace SharedLibrary.Azure
 
         public async Task<bool> CleanYearDays(DateOnly date)
         {
-            Title("Remove All Junkies Day DataPoints", ConsoleColor.Cyan);
+            Log($"Remove All Junkies Day DataPoints pd{date.Year}", ConsoleColor.DarkBlue);
 
-            var blobs = _blobBLocks.OfType<CloudBlockBlob>()
+            var blobBlocks = await GetAllBlobsAsync();
+            var blobs = blobBlocks.OfType<CloudBlockBlob>()
                                    .Where(blob => blob.Name.Contains($"pd{date.Year}"))
                                    .Where(blob => !blob.Name.Contains("BackUp")).ToList();
 
@@ -72,7 +73,7 @@ namespace SharedLibrary.Azure
                 try
                 {
                     var fileName = GetFileName(blob.Name);
-                    var originalJson = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
+                    var originalJson = await ReadBlobFile(fileName);
 
                     var productionDto = ProductionDto.FromJson(originalJson);
                     bool didChange = false;
@@ -93,7 +94,8 @@ namespace SharedLibrary.Azure
                     if (didChange)
                     {
                         var updatedJson = ProductionDto.ToJson(productionDto);
-                        await BackupAndReplaceOriginalFile(fileName, originalJson, updatedJson);
+                        //await BackupAndReplaceOriginalFile(fileName, originalJson, updatedJson);
+                        await ForcePublish(fileName, updatedJson);
                     }
                 }
                 catch (Exception ex)
@@ -112,18 +114,18 @@ namespace SharedLibrary.Azure
             //PD -> PM -> clouuudddd 🔥
             var yearDays = await GetYearDayFiles(date);
             var daysFile = yearDays.OrderBy(x => x.Date)
-                                            .GroupBy(x => x.Date.Month)
-                                            .ToList();
+                                    .GroupBy(x => x.Date.Month)
+                                    .ToList();
 
             var monthTasks = new List<Task>();
             foreach (var month in daysFile)
             {
+                var monthGroup = month.ToList();
 
                 monthTasks.Add(Task.Run(async () =>
                 {
-                    var result = await HandleMonthMagically_AndUploadThem(month.ToList());
+                    var result = await HandleMonthMagically_AndUploadThem(monthGroup);
                     return result;
-
                 }));
             }
 
@@ -134,8 +136,6 @@ namespace SharedLibrary.Azure
         {
             try
             {
-
-
                 // PM -> PY 🧸
                 var yearMonthsFiles = await GetYear_MonthFilessAsync(date);
 
@@ -147,7 +147,7 @@ namespace SharedLibrary.Azure
                     var prod = ProductionDto.FromJson(month.DataJson);
                     productions.Add(prod);
                 });
-                productions.OrderBy(x => x.TimeStamp);
+                productions = productions.OrderBy(x => x.TimeStamp).ToList();
 
                 foreach (var inverter in inverters)
                 {
@@ -176,7 +176,7 @@ namespace SharedLibrary.Azure
                     TimeStamp = new DateTime(date.Year, 1, 1)
                 };
 
-                await UploadProduction(productionYear, FileType.Year);
+                await ForcePublish($"py{date.Year}", ProductionDto.ToJson(productionYear));
                 var jsonResult = await ReadBlobFile($"py{date.Year}");
 
                 return jsonResult;
@@ -225,54 +225,17 @@ namespace SharedLibrary.Azure
                     TimeStamp = new DateTime(2014, 1, 1)
                 };
 
-                lock (ApplicationVariables.locktotalFile)
-                {
-                    var res = UploadProduction(productionTotal, FileType.Total).Result;
-                }
-                var jsonResult = await ReadBlobFile($"pt");
+                var res = string.Empty;
 
-                return jsonResult;
+                res = await UploadProduction(productionTotal, FileType.Total);
+
+                return res;
             }
             catch (Exception e)
             {
                 LogError($"TotalFile failed :" + e.Message);
             }
             return null;
-        }
-
-        public async Task<bool> CreatAndUploadProduction(List<Inverter> inverters, FileType fileType)
-        {
-            var date = inverters.First().Production.First().TimeStamp.Value;
-            var productionMont = new ProductionDto()
-            {
-                Inverters = inverters.ToList(),
-                TimeType = (int)fileType
-            };
-            string fileName = string.Empty;
-
-            switch (fileType)
-            {
-                case FileType.Day:
-                    productionMont.TimeStamp = new DateTime(date.Year, date.Month, date.Day);
-                    fileName = $"pd{date.Year}{date.Month:D2}{date.Day:D2}";
-                    break;
-                case FileType.Month:
-                    productionMont.TimeStamp = new DateTime(date.Year, date.Month, 1);
-                    fileName = $"pm{date.Year}{date.Month:D2}";
-                    break;
-                case FileType.Year:
-                    productionMont.TimeStamp = new DateTime(date.Year, 1, 1);
-                    fileName = $"py{date.Year}";
-                    break;
-                case FileType.Total:
-                    productionMont.TimeStamp = new DateTime(2000, 1, 1);
-                    fileName = $"pt";
-                    break;
-            }
-
-            var productionJson = ProductionDto.ToJson(productionMont);
-
-            return await CreateAndUploadBlobFile(productionJson, fileName);
         }
 
         public async Task<string> UploadProduction(ProductionDto production, FileType fileType)
@@ -324,18 +287,26 @@ namespace SharedLibrary.Azure
                             TimeStamp = new DateTime(productionDay.TimeStamp.Value.Year,
                                 productionDay.TimeStamp.Value.Month, productionDay.TimeStamp.Value.Day),
                             Value = totalMonthProduction
-                        });
+                        }
+                        );
 
-                });
+                }
+                );
 
-                inverter.Production=  inverter.Production.OrderBy(x => x.TimeStamp).ToList();
+                inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
             });
 
+            var production = new ProductionDto
+            {
+                TimeType = (int)FileType.Month,
+                TimeStamp = inverters.First().Production.First().TimeStamp,
+                Inverters = inverters.ToList()
+            };
 
-            var result = await CreatAndUploadProduction(inverters.ToList(), FileType.Month);
+            var result = await UploadProduction(production, FileType.Month);
 
-            if (result)
-                return "Success";
+            if (IsValidJson(result))
+                return result;
             else
                 return null;
         }
@@ -346,10 +317,13 @@ namespace SharedLibrary.Azure
 
             try
             {
-                var yearBlolbBlocks = _blobBLocks
+                var blocks = await GetAllBlobsAsync();
+                var yearBlolbBlocks = blocks
                                       .Where(blob =>
-                                          blob.Name.Contains(fileName) && !blob.Name.Contains("pd") &&
-                                          !blob.Name.Contains("BackUp"))
+                                          blob.Name.Contains(fileName)
+                                          && !blob.Name.Contains("pd")
+                                          //&& !blob.Name.Contains("BackUp")
+                                          )
                                       .ToList();
 
                 var tasks = new List<Task>();
@@ -359,7 +333,7 @@ namespace SharedLibrary.Azure
                     tasks.Add(DeleteBlobFileIfExist(GetFileName(blob)));
                 }
 
-                await Task.WhenAll(tasks).ConfigureAwait(false);
+                await Task.WhenAll(tasks);
                 return true;
             }
             catch (Exception e)
@@ -371,19 +345,19 @@ namespace SharedLibrary.Azure
             }
         }
 
-        private object GetMonthFile(DateTime requestDate)
-        {
-            for (int month = 1; month <= 12; month++)
-            {
-                for (int i = 0; i < requestDate.Year; i++)
-                {
-                    var jsonResult = "null";
-                    return jsonResult;
-                }
-            }
-
-            return false;
-        }
+        // private object GetMonthFile(DateTime requestDate)
+        // {
+        //     for (int month = 1; month <= 12; month++)
+        //     {
+        //         for (int i = 0; i < requestDate.Year; i++)
+        //         {
+        //             var jsonResult = "null";
+        //             return jsonResult;
+        //         }
+        //     }
+        //
+        //     return false;
+        // }
     }
 
 
