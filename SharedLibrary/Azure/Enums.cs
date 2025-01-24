@@ -7,9 +7,3 @@ public enum FileType
     Year = 1,
     Total = 0,
 }
-
-public enum UpdateType
-{
-    Read,
-    Erase
-}

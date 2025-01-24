@@ -21,9 +21,9 @@ namespace SharedLibrary.Azure
 
             lock (LocksLock)
             {
-                if (Locks.ContainsKey(key) == true)
+                if (Locks.TryGetValue(key, out var @lock) == true)
                 {
-                    return Locks[key];
+                    return @lock;
                 }
                 else
                 {

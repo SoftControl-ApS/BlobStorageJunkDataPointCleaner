@@ -123,10 +123,10 @@ public partial class AzureBlobCtrl
     //    return "null";
     //}
 
-    async Task<List<HoodProduction>> GetYear_MonthFilessAsync(DateOnly date)
+    async Task<List<MonthProductionDTO>> GetYear_MonthFilessAsync(DateOnly date)
     {
-        var monthsFiles = new List<HoodProduction>();
-        var tasks = new List<Task<HoodProduction>>();
+        var monthsFiles = new List<MonthProductionDTO>();
+        var tasks = new List<Task<MonthProductionDTO>>();
 
         for (int month = 1; month <= 12; month++)
         {
@@ -136,7 +136,7 @@ public partial class AzureBlobCtrl
             // Start the asynchronous read operation and add the task to the list
             tasks.Add(ReadBlobFile(filename).ContinueWith(result =>
             {
-                return new HoodProduction()
+                return new MonthProductionDTO()
                 {
                     FileType = FileType.Year,
                     Date = requestDate,

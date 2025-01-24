@@ -103,6 +103,25 @@ namespace SharedLibrary.Azure
             return updatedInverters;
         }
 
+        private  ConcurrentBag<Inverter> GetInverters()
+        {
+            if (!_inverters.Any())
+            {
+                return InitInverters();
+            }
+
+            return _inverters;
+        }
+
+        ConcurrentBag<Inverter> InitInverters()
+        {
+            _inverters = InitializeInverters(ProductionDto.FromJson(ReadBlobFile("pt").Result).Inverters);
+            return _inverters;
+        }
+        
+        private ConcurrentBag<Inverter> _inverters = new ConcurrentBag<Inverter>();
+        
+
         //private async Task<List<Inverter>> UpdateInverterProductionData(IEnumerable<Inverter> inverters, int year)
         //{
         //    var updatedInverters = InitializeInvertersToList(inverters);

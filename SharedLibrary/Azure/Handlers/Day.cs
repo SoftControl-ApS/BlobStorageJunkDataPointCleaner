@@ -186,7 +186,7 @@ public partial class AzureBlobCtrl
                             {
                                 TimeType = (int)FileType.Day,
                                 TimeStamp = datetime,
-                                Inverters = await GetInstallationInverters()
+                                Inverters = GetInverters().ToList()
                             };
 
 
@@ -224,7 +224,7 @@ public partial class AzureBlobCtrl
     }
 
 
-    async Task<HoodProduction?> GetDayFile(int currentMonth, int currentDay, DateOnly date)
+    async Task<MonthProductionDTO?> GetDayFile(int currentMonth, int currentDay, DateOnly date)
     {
         string customTaskId = $"{currentMonth}/{currentDay}";
 
@@ -236,7 +236,7 @@ public partial class AzureBlobCtrl
         {
             try
             {
-                var result = new HoodProduction()
+                var result = new MonthProductionDTO()
                              {
                                  DataJson = json,
                                  Date = new DateOnly(date.Year, currentMonth, currentDay),
@@ -256,9 +256,9 @@ public partial class AzureBlobCtrl
         return null;
     }
 
-    async Task<ConcurrentBag<HoodProduction>> GetYearDayFiles(DateOnly date)
+    async Task<ConcurrentBag<MonthProductionDTO>> GetYearDayFiles(DateOnly date)
     {
-        ConcurrentBag<HoodProduction> dayFiles = new ConcurrentBag<HoodProduction>();
+        ConcurrentBag<MonthProductionDTO> dayFiles = new ConcurrentBag<MonthProductionDTO>();
         List<Task> tasks = new List<Task>();
 
         for (int month = 1; month <= 12; month++)
@@ -271,7 +271,7 @@ public partial class AzureBlobCtrl
 
                 tasks.Add(Task.Run(async () =>
                 {
-                    HoodProduction? result = await GetDayFile(currentMonth, currentDay, date);
+                    MonthProductionDTO? result = await GetDayFile(currentMonth, currentDay, date);
                     if (result != null)
                     {
                         dayFiles.Add(result);

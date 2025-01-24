@@ -9,66 +9,64 @@ using static Microsoft.WindowsAzure.Storage.CloudStorageAccount;
 using SharedLibrary.SunSys;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Threading;
+using Microsoft.WindowsAzure.Storage.Blob.Protocol;
 
-namespace SharedLibrary.Azure
+namespace SharedLibrary.Azure;
+
+public partial class AzureBlobCtrl
 {
-    public partial class AzureBlobCtrl
+    public static CloudBlobClient CreateCloudBlobClient()
     {
-        public static CloudBlobClient CreateCloudBlobClient()
-        {
-            CloudStorageAccount storageAccount = Parse(AzureBlobConnectionString);
-            CloudBlobClient? blobClient = storageAccount.CreateCloudBlobClient();
-            return blobClient;
-        }
+        CloudStorageAccount storageAccount = Parse(AzureBlobConnectionString);
+        CloudBlobClient? blobClient = storageAccount.CreateCloudBlobClient();
+        return blobClient;
+    }
 
-        private async Task<List<CloudBlockBlob>> GetAllBlobsAsync(string containerName = "installations")
-        {
-            var snDir = GetContainerReference(containerName).GetDirectoryReference(InstallationId);
-            BlobContinuationToken continuationToken = null;
-            var blobs = new List<CloudBlockBlob>();
+    private async Task<List<CloudBlockBlob>> GetAllBlobsAsync(string containerName = "installations")
+    {
+        var snDir = GetContainerReference(containerName).GetDirectoryReference(InstallationId);
+        BlobContinuationToken continuationToken = null;
 
-            do
+        do
+        {
+            var resultSegment = await snDir.ListBlobsSegmentedAsync(continuationToken);
+            continuationToken = resultSegment.ContinuationToken;
+
+            _blobs = resultSegment.Results.OfType<CloudBlockBlob>().ToList();
+        } while (continuationToken != null);
+
+        return blobs;
+    }
+
+    public async Task<CloudBlockBlob?> GetBlockBlobReference(string zip, string containerName = "installations")
+    {
+        CloudBlockBlob? blobFile = blobs.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
+        if (blobFile == null)
+        {
+            if (blobFile == null && zip.Contains("pd"))
             {
-                var resultSegment = await snDir.ListBlobsSegmentedAsync(continuationToken);
-                continuationToken = resultSegment.ContinuationToken;
-
-                blobs = resultSegment.Results.OfType<CloudBlockBlob>().ToList();
-            } while (continuationToken != null);
-
-            return blobs;
-        }
-
-        public async Task<CloudBlockBlob?> GetBlockBlobReference(string zip, string containerName = "installations")
-        {
-            var blocks = await GetAllBlobsAsync();
-            CloudBlockBlob? blobFile = blocks.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
-            if (blobFile == null)
-            {
-                if (blobFile == null && zip.Contains("pd"))
-                {
-                    await GenerateAndUploadEmptyDayFile(ExtractDateFromFileName(zip));
-                    blobFile = blocks.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
-                    return blobFile;
-                }
-
-                LogError($"Blob '{zip}' in installation '{InstallationId}' does not exist.");
-                SharedLibrary.ApplicationVariables.FailedFiles.Add(new(zip, "GetBlockBlobReference() x2"));
+                await GenerateAndUploadEmptyDayFile(ExtractDateFromFileName(zip));
+                blobFile = blobs.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
+                return blobFile;
             }
 
-            return blobFile;
+            LogError($"Blob '{zip}' in installation '{InstallationId}' does not exist.");
+            FailedFiles.Add(new(zip, "GetBlockBlobReference() x2"));
         }
 
-        public CloudBlobContainer GetContainerReference(string containerName = "installations")
-        {
-            var blobClient = CreateCloudBlobClient();
-            CloudBlobContainer rootContainer = blobClient.GetContainerReference(containerName);
-            rootContainer.SetPermissionsAsync(
-                new BlobContainerPermissions()
-                {
-                    PublicAccess = BlobContainerPublicAccessType.Blob
-                }
-            );
-            return rootContainer;
-        }
+        return blobFile;
+    }
+
+    public CloudBlobContainer GetContainerReference(string containerName = "installations")
+    {
+        var blobClient = CreateCloudBlobClient();
+        CloudBlobContainer rootContainer = blobClient.GetContainerReference(containerName);
+        rootContainer.SetPermissionsAsync(
+            new BlobContainerPermissions()
+            {
+                PublicAccess = BlobContainerPublicAccessType.Blob
+            }
+        );
+        return rootContainer;
     }
 }

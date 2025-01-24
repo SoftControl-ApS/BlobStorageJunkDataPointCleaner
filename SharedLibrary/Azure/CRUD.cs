@@ -18,7 +18,9 @@ namespace SharedLibrary.Azure
     public partial class AzureBlobCtrl
     {
         #region Create
-        public async Task<bool> CreateAndUploadBlobFile(string jsonContent, string fileName, string containerName = "installations")
+
+        public async Task<bool> CreateAndUploadBlobFile(string jsonContent, string fileName,
+                                                        string containerName = "installations")
         {
             string zipFileName = $"{fileName}.zip";
             CloudBlobContainer container = GetContainerReference(containerName);
@@ -40,12 +42,16 @@ namespace SharedLibrary.Azure
                 compressedStream.Seek(0, SeekOrigin.Begin);
                 await blobFile.UploadFromStreamAsync(compressedStream);
             }
+
             Log($"{fileName} production object was created", ConsoleColor.Yellow);
 
             return true;
         }
+
         #endregion
+
         #region Read
+
         public async Task<string> ReadBlobFile(string fileName)
         {
             var json = await ReadBlobFile($"{fileName}.json", $"{fileName}.zip", InstallationId);
@@ -93,17 +99,19 @@ namespace SharedLibrary.Azure
                 }
 
                 return json;
-
             }
             catch (Exception e)
             {
                 LogError("" + e.Message);
             }
+
             return null;
         }
 
         #endregion
+
         #region update
+
         public async Task<bool> WriteJson(string json, string fileName, string? sn = null)
         {
             sn = ValidateFileName(fileName, sn);
@@ -130,10 +138,14 @@ namespace SharedLibrary.Azure
                     await blobFile.UploadFromStreamAsync(compressed);
                 }
             }
+
             return true;
         }
+
         #endregion
+
         #region Delete
+
         public async Task<bool> DeleteBlobFileIfExist(string zip, string containerName = "installations")
         {
             if (!zip.EndsWith(".zip"))
@@ -148,10 +160,12 @@ namespace SharedLibrary.Azure
             }
             catch (Exception ex)
             {
-                LogError("Could not delete zip " + zip); LogError(ex.ToString());
+                LogError("Could not delete zip " + zip);
+                LogError(ex.ToString());
                 return false;
             }
         }
+
         #endregion
     }
 }

@@ -22,11 +22,58 @@ public partial class AzureBlobCtrl
     public string InstallationId { get; set; } = null;
     public string ContainerName { get; set; } = null;
 
+    List<CloudBlockBlob> _blobs = null;
+
+    List<CloudBlockBlob> blobs
+    {
+        get
+        {
+            if (_blobs == null)
+            {
+                _blobs = GetAllBlobsAsync().Result;
+            }
+
+            return _blobs;
+        }
+    }
+
+
     public AzureBlobCtrl(string containerName, string installationId)
     {
         this.ContainerName = containerName;
         this.InstallationId = installationId;
     }
+
+    private async Task BackupAndReplaceOriginalFile(string fileName, string? originalJson, string updatedJson)
+    {
+        if (updatedJson == null)
+        {
+            LogError("updated Json is null");
+            return;
+        }
+
+        fileName = GetFileName(fileName);
+
+        if (fileName.Contains("pd"))
+            await ForcePublish($"{fileName}_BackUp", originalJson);
+        await ForcePublish(fileName, updatedJson);
+    }
+
+    private async Task<string> ForcePublish(string fileName, string json)
+    {
+        if (IsValidJson(json) == null)
+        {
+            LogError("updated Json is null");
+            throw new ArgumentNullException("Invalid json file");
+        }
+
+        fileName = GetFileName(fileName);
+        var deleteREsult = await DeleteBlobFileIfExist(fileName);          // Delete original
+        var publishResult = await CreateAndUploadBlobFile(json, fileName); // Upload updated
+        return await ReadBlobFile(fileName);
+    }
+
+    #region TDO
 
     //public async Task<bool> UpDateAllFiles(DateOnly date)
     //{
@@ -69,30 +116,5 @@ public partial class AzureBlobCtrl
     //    return await FixFile(fileType, date);
     //}
 
-    private async Task BackupAndReplaceOriginalFile(string fileName, string? originalJson, string updatedJson)
-    {
-        if (updatedJson == null)
-        {
-            LogError("updated Json is null");
-            return;
-        }
-        fileName = GetFileName(fileName);
-
-        if (fileName.Contains("pd"))
-            await ForcePublish($"{fileName}_BackUp", originalJson);
-        await ForcePublish(fileName, updatedJson);
-    }
-    private async Task<string> ForcePublish(string fileName, string json)
-    {
-        if (IsValidJson(json) == null)
-        {
-            LogError("updated Json is null");
-            throw new ArgumentNullException("Invalid json file");
-        }
-
-        fileName = GetFileName(fileName);
-        var deleteREsult = await DeleteBlobFileIfExist(fileName); // Delete original
-        var publishResult = await CreateAndUploadBlobFile(json, fileName); // Upload updated
-        return await ReadBlobFile(fileName);
-    }
+    #endregion
 }

@@ -1,27 +1,18 @@
 ﻿using SharedLibrary.Models;
 using CsvHelper.Configuration;
 using CsvHelper;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.IO.Compression;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using System.Reflection.Metadata;
-using SharedLibrary.util;
 using static SharedLibrary.util.Util;
+
 namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
         static CsvConfiguration csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
-        {
-            Delimiter = ";",
-            HasHeaderRecord = true,
-        };
-
+                                            {
+                                                Delimiter = ";",
+                                                HasHeaderRecord = true,
+                                            };
 
         private static string directoryCheck(string fileName)
         {
@@ -60,6 +51,7 @@ namespace SharedLibrary.Azure
                     csv.WriteField($"");
                     csv.WriteField($"");
                 }
+
                 csv.NextRecord();
 
                 int maxDataPoints = production.Inverters.Max(inv => inv.Production.Count);
@@ -86,12 +78,14 @@ namespace SharedLibrary.Azure
                         {
                             Console.WriteLine("");
                         }
+
                         csv.WriteField(joules.ToString());
                         csv.WriteField(kWh.ToString());
                         csv.WriteField(Wh.ToString());
                         csv.WriteField("");
                         csv.WriteField("");
                     }
+
                     csv.NextRecord();
                 }
 

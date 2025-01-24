@@ -154,7 +154,7 @@ public partial class AzureBlobCtrl
         {
             TimeType = (int)FileType.Year,
             TimeStamp = datetime,
-            Inverters = await GetInstallationInverters()
+            Inverters = GetInverters().ToList()
         };
 
         await Parallel.ForEachAsync(yearProduction.Inverters, cancellationToken, async (inverter, token) =>
@@ -184,26 +184,26 @@ public partial class AzureBlobCtrl
     }
 
 
-    async Task<List<Inverter>> GetInstallationInverters()
-    {
-        var response = await ReadBlobFile($"pt");
-        if (!IsValidJson(response))
-        { 
-            throw new Exception("GetInstallationInverters failed"); 
-        }
-        ProductionDto fetchedData = ProductionDto.FromJson(response);
-        return InitializeInvertersToList(fetchedData.Inverters);
-    }
+    // async Task<List<Inverter>> GetInstallationInverters()
+    // {
+    //     var response = await ReadBlobFile($"pt");
+    //     if (!IsValidJson(response))
+    //     { 
+    //         throw new Exception("GetInstallationInverters failed"); 
+    //     }
+    //     ProductionDto fetchedData = ProductionDto.FromJson(response);
+    //     return InitializeInvertersToList(fetchedData.Inverters);
+    // }
 
-    async Task<ConcurrentBag<Inverter>> GetInstallationInvertersConcurentBag()
-    {
-        var fetchedInverter = await GetInstallationInverters();
-        var result = new ConcurrentBag<Inverter>();
-        Parallel.ForEach(InitializeInvertersToList(fetchedInverter), item =>
-        {
-            result.Add(item);
-        });
-        return result;
-    }
+    // async Task<ConcurrentBag<Inverter>> GetInstallationInvertersConcurentBag()
+    // {
+    //     var fetchedInverter = await GetInstallationInverters();
+    //     var result = new ConcurrentBag<Inverter>();
+    //     Parallel.ForEach(InitializeInvertersToList(fetchedInverter), item =>
+    //     {
+    //         result.Add(item);
+    //     });
+    //     return result;
+    // }
 
 }

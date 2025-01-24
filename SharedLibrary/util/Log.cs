@@ -14,13 +14,15 @@ namespace SharedLibrary.util
             Console.ForegroundColor = color;
             Console.WriteLine(title);
             Console.ResetColor();
-        } 
+        }
+
         public static void LogSuccess(string title, ConsoleColor color = ConsoleColor.Green)
         {
             Console.ForegroundColor = color;
             Console.WriteLine(title);
             Console.ResetColor();
-        } 
+        }
+
         public static void Title(string title, ConsoleColor color = ConsoleColor.Magenta)
         {
             var banner = FiggleFonts.Standard.Render(title);
@@ -33,6 +35,13 @@ namespace SharedLibrary.util
         {
             Console.ForegroundColor = color;
             Console.WriteLine(title);
+            Console.ResetColor();
+        }
+
+        public static void LogError(Exception ex, ConsoleColor color = ConsoleColor.Red)
+        {
+            Console.ForegroundColor = color;
+            Console.WriteLine(ex.Message);
             Console.ResetColor();
         }
 
