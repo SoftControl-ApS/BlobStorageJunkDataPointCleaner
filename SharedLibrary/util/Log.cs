@@ -47,7 +47,6 @@ namespace SharedLibrary.util
 
         public static void Message(string message)
         {
-            //var banner = FiggleFonts.Alligator2.Render(message);
             Console.ForegroundColor = ConsoleColor.Gray;
             Console.WriteLine(message);
             Console.ResetColor();

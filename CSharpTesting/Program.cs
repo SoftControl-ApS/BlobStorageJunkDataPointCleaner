@@ -14,89 +14,86 @@ static class Program
 
     public static async Task Main(string[] args)
     {
-        var processor = new InverterProcessor();
-        var inverterIds = new List<int> { 129, 102, 198 };
+        var installationIds = new List<int> { 129, 102, 198 };
         for (int i = 24; i <= 54; i++)
         {
-            inverterIds.Add(i);
+            installationIds.Add(i);
         }
 
-        await processor.ProcessInvertersAsync(inverterIds);
-        Console.ReadLine();
-    }
-
-    public class InverterProcessor
-    {
-        public async Task ProcessInvertersAsync(IEnumerable<int> inverterIds)
+        foreach (var inverterId in installationIds)
         {
-            var tasks = inverterIds.Select(async inverterId =>
+            try
             {
-                try
+                var installationId = inverterId.ToString();
+                var containerName = "installations";
+                var date = new DateTime(2024, 1, 1, 1, 1, 1, DateTimeKind.Utc);
+                var energy = 3_600_000_000;
+                ApplicationVariables.SetMaxEnergyInJoule(energy);
+                Title($"Handling Installation {installationId}");
+                Log($"ContainerName: {containerName}");
+                Log($"date: {date.ToString()}");
+                Log($"Max energy in Kwh: {energy / 36_00_000}");
+
+
+
+
+                var tasks = new List<Task>();
+                for (int i = date.Year; i >= 2014; i--)
                 {
-                    await Run(inverterId);
+                    var year = i;
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var instance = new AzureBlobCtrl(containerName, installationId);
+                            return await instance.LetTheMagicHappen(new DateOnly(year, 1, 1));
+                        }
+                        catch (Exception e)
+                        {
+                            LogError(e);
+                            Failed.TryAdd(installationId, e.Message);
+                        }
+
+                        return null;
+                    }));
+
+
+                    Stopwatch sw = new Stopwatch();
+                    sw.Start();
+                    await Task.WhenAll(tasks);
+
+                    Log("Mission start");
+
+                    sw.Stop();
+                    Log("Mission took" + sw.ElapsedMilliseconds / 1000 + "s");
+                    Log("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_");
+                    Title("FINNISHED");
+
+                    _ = ApplicationVariables.FailedFiles.GroupBy(x => x.Name).OrderBy(x => x.Count()).ToList();
+
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                    LogError(e);
-                    Failed.TryAdd(inverterId.ToString(), e.Message);
-                }
-            });
-            await Task.WhenAll(tasks);
-        }
-
-
-        public async Task Run(int InstallatinId)
-        {
-            var installationId = InstallatinId.ToString();
-            var containerName = "installations";
-
-            var date = new DateTime(2024, 1, 1, 1, 1, 1, DateTimeKind.Utc);
-
-            var energy = 3_600_000_000;
-            ApplicationVariables.SetMaxEnergyInJoule(energy);
-
-            Title($"Handling Installation {installationId}");
-            Log($"ContainerName: {containerName}");
-            Log($"date: {date.ToString()}");
-            Log($"Max energy in Kwh: {energy / 36_00_000}");
-
-            var tasks = new List<Task>();
-            for (int i = date.Year; i >= 2014; i--)
+            }
+            catch (Exception e)
             {
-                var year = i;
-                tasks.Add(Task.Run(async () =>
-                {
-                    try
-                    {
-                        var instance = new AzureBlobCtrl(containerName, installationId);
-                        return await instance.LetTheMagicHappen(new DateOnly(year, 1, 1));
-                    }
-                    catch (Exception e)
-                    {
-                        LogError(e);
-                        Failed.TryAdd(installationId, e.Message);
-                    }
-
-                    return null;
-                }));
-
-
-                Stopwatch sw =
-                    new Stopwatch();
-                new Stopwatch();
-                sw.Start();
-                await Task.WhenAll(tasks);
-
-                Log("Mission start");
-
-                sw.Stop();
-                Log("Mission took" + sw.ElapsedMilliseconds / 1000 + "s");
-                Log("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_");
-                Title("FINNISHED");
-
-                _ = ApplicationVariables.FailedFiles.GroupBy(x => x.Name).OrderBy(x => x.Count()).ToList();
+                Failed.Add($"Exception{Guid.NewGuid().ToString()}", e.Message);
             }
         }
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        Console.ReadLine();
+        Console.ReadLine();
+        Console.ReadLine();
+        Console.ReadLine();
     }
+    
 }

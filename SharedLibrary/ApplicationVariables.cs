@@ -5,6 +5,9 @@ namespace SharedLibrary
 {
     public class ApplicationVariables
     {
+        public static IConfiguration Configuration { get; }
+        public static object locktotalFile { get; } = new();
+        public static List<Failed> FailedFiles = new();
         static ApplicationVariables()
         {
             var builder = new ConfigurationBuilder()
@@ -26,11 +29,6 @@ namespace SharedLibrary
                 $"AccountKey={AzureBlobConnectionKey};" +
                 $"EndpointSuffix=core.windows.net";
         }
-
-        public static IConfiguration Configuration { get; }
-        public static object locktotalFile { get; } = new object();
-        public static List<Failed> FailedFiles = new List<Failed>();
-
         public class Failed
         {
             public string Name { get; set; }

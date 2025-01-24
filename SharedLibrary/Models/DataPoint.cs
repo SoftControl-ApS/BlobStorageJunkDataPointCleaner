@@ -39,9 +39,6 @@ public class ZeroIfNullOrNaNConverter : JsonConverter<double?>
             {
                 return result;
             }
-            else
-            {
-            }
         }
 
         return 0;

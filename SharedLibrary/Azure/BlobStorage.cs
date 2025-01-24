@@ -68,8 +68,8 @@ public partial class AzureBlobCtrl
         }
 
         fileName = GetFileName(fileName);
-        var deleteREsult = await DeleteBlobFileIfExist(fileName);          // Delete original
-        var publishResult = await CreateAndUploadBlobFile(json, fileName); // Upload updated
+        await DeleteBlobFileIfExist(fileName);
+        await CreateAndUploadBlobFile(json, fileName);
         return await ReadBlobFile(fileName);
     }
 

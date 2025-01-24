@@ -43,7 +43,7 @@ namespace SharedLibrary.Azure
                 await blobFile.UploadFromStreamAsync(compressedStream);
             }
 
-            Log($"{fileName} production object was created", ConsoleColor.Yellow);
+            Log($"{fileName} - {InstallationId} production object was created", ConsoleColor.Yellow);
 
             return true;
         }
