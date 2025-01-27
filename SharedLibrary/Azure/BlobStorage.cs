@@ -42,24 +42,25 @@ public partial class AzureBlobCtrl
     {
         this.ContainerName = containerName;
         this.InstallationId = installationId;
+        LoadPT();
     }
 
-    private async Task BackupAndReplaceOriginalFile(string fileName, string? originalJson, string updatedJson)
+    private async Task<bool> BackupAndReplaceOriginalFile(string fileName, string? originalJson, string updatedJson)
     {
         if (updatedJson == null)
         {
             LogError("updated Json is null");
-            return;
+            return false;
         }
 
         fileName = GetFileName(fileName);
 
         if (fileName.Contains("pd"))
             await ForcePublish($"{fileName}_BackUp", originalJson);
-        await ForcePublish(fileName, updatedJson);
+        return await ForcePublish(fileName, updatedJson);
     }
 
-    private async Task<string> ForcePublish(string fileName, string json)
+    private async Task<string> ForcePublishAndRead(string fileName, string json)
     {
         if (IsValidJson(json) == null)
         {
@@ -71,6 +72,19 @@ public partial class AzureBlobCtrl
         await DeleteBlobFileIfExist(fileName);
         await CreateAndUploadBlobFile(json, fileName);
         return await ReadBlobFile(fileName);
+    }
+
+    private async Task<bool> ForcePublish(string fileName, string json)
+    {
+        if (!IsValidJson(json))
+        {
+            LogError("Publish Failed: Invalid Json: " + json.ToString());
+            throw new ArgumentNullException("Invalid json file");
+        }
+
+        fileName = GetFileName(fileName);
+        await DeleteBlobFileIfExist(fileName);
+        return await CreateAndUploadBlobFile(json, fileName, source: "PUBLISH");
     }
 
     #region TDO

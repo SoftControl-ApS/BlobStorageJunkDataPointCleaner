@@ -14,17 +14,22 @@ static class Program
 
     public static async Task Main(string[] args)
     {
-        var installationIds = new List<int> { 129, 102, 198 };
-        for (int i = 24; i <= 54; i++)
-        {
-            installationIds.Add(i);
-        }
+        var installationIds = new List<int>
+                              {
+                                  /*129, 102, 198 ,*/ 150
+                              };
+        // for (int i = 24; i <= 54; i++)
+        // {
+        //     installationIds.Add(i);
+        // }
 
-        foreach (var inverterId in installationIds)
+        // Parallel.ForEachAsync(installationIds, CancellationToken.None, async installationID =>
+        // await Parallel.ForEachAsync(installationIds, CancellationToken.None, // async (installationID, cancellationToken) =>
+        foreach (var installationID in installationIds)
         {
             try
             {
-                var installationId = inverterId.ToString();
+                var installationId = installationID.ToString();
                 var containerName = "installations";
                 var date = new DateTime(2024, 1, 1, 1, 1, 1, DateTimeKind.Utc);
                 var energy = 3_600_000_000;
@@ -35,7 +40,7 @@ static class Program
                 Log($"Max energy in Kwh: {energy / 36_00_000}");
 
 
-
+                var instance = new AzureBlobCtrl(containerName, installationId);
 
                 var tasks = new List<Task>();
                 for (int i = date.Year; i >= 2014; i--)
@@ -45,7 +50,6 @@ static class Program
                     {
                         try
                         {
-                            var instance = new AzureBlobCtrl(containerName, installationId);
                             return await instance.LetTheMagicHappen(new DateOnly(year, 1, 1));
                         }
                         catch (Exception e)
@@ -56,7 +60,7 @@ static class Program
 
                         return null;
                     }));
-
+                }
 
                     Stopwatch sw = new Stopwatch();
                     sw.Start();
@@ -64,36 +68,43 @@ static class Program
 
                     Log("Mission start");
 
-                    sw.Stop();
-                    Log("Mission took" + sw.ElapsedMilliseconds / 1000 + "s");
-                    Log("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_");
-                    Title("FINNISHED");
+                sw.Stop();
+                Log("Operatoin took" + sw.ElapsedMilliseconds / 1000 + "s");
+                Log("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_");
+                Title("FINNISHED");
 
-                    _ = ApplicationVariables.FailedFiles.GroupBy(x => x.Name).OrderBy(x => x.Count()).ToList();
-
-                }
+                _ = ApplicationVariables.FailedFiles.GroupBy(x => x.Name).OrderBy(x => x.Count()).ToList();
             }
             catch (Exception e)
             {
                 Failed.Add($"Exception{Guid.NewGuid().ToString()}", e.Message);
             }
         }
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        Console.ReadLine();
-        Console.ReadLine();
-        Console.ReadLine();
-        Console.ReadLine();
+        // );
+
+        string directoryPath = @"C:\Users\KevinBamwesa\Desktop";
+        string filePath = Path.Combine(directoryPath, $"{Guid.NewGuid()}.txt");
+
+        // Check if the directory exists, if not, create it
+        if (!Directory.Exists(directoryPath))
+        {
+            Directory.CreateDirectory(directoryPath);
+        }
+
+        using (TextWriter tw = new StreamWriter(filePath))
+        {
+            foreach (var s in Failed)
+            {
+                await tw.WriteAsync(s.Key);
+                await tw.WriteAsync("");
+                await tw.WriteLineAsync(s.Value);
+            }
+        }
+
+        // Console.ReadLine();
+        // Console.ReadLine();
+        // Console.ReadLine();
+        // Console.ReadLine();
     }
     
 }

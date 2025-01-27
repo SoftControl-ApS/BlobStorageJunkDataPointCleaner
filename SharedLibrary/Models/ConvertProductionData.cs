@@ -37,10 +37,19 @@ public partial class ProductionDto
     public static string ToJson(ProductionDto production)
     {
         if (production == null)
+        try{
+        return JsonConvert.SerializeObject(production, Converter.Settings);
+        
+        }
+        catch (Exception e)
         {
+            if (production != null)
+            {
+                LogError("Convert DTO to Json"+ e.Message);
+            }
+
             return null;
         }
-        return JsonConvert.SerializeObject(production, Converter.Settings);
     }
 }
 
