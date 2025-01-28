@@ -59,7 +59,7 @@ namespace SharedLibrary.Azure
         {
             var json = await ReadBlobFile($"{fileName}.json", $"{fileName}.zip", InstallationId);
 
-            if (!IsValidJson(json))
+            if (!IsValidJson(json)) // PR: Can be removed
             {
                 LogError($"READ: Invalid Json- {fileName} response {json}");
                 return null;

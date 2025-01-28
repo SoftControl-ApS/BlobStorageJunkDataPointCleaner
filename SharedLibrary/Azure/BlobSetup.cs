@@ -13,7 +13,7 @@ using Microsoft.WindowsAzure.Storage.Blob.Protocol;
 
 namespace SharedLibrary.Azure;
 
-public partial class AzureBlobCtrl
+public partial class AzureBlobCtrl // PR: partial class sucks. Don't bother to change it. Just wanted to complain
 {
     public static CloudBlobClient CreateCloudBlobClient()
     {
@@ -30,12 +30,12 @@ public partial class AzureBlobCtrl
 
         do
         {
-            var resultSegment = snDir.ListBlobsSegmentedAsync(continuationToken).Result;
+            var resultSegment = await snDir.ListBlobsSegmentedAsync(continuationToken);
             continuationToken = resultSegment.ContinuationToken;
 
             lock (lockblobs)
             {
-                _blobs = resultSegment.Results.OfType<CloudBlockBlob>().ToList();
+                _blobs = resultSegment.Results.OfType<CloudBlockBlob>().ToList(); 
             }
         } while (continuationToken != null);
 

@@ -29,7 +29,7 @@ static class Program
             {
                 var installationId = installationID.ToString();
                 var containerName = "installations";
-                var date = new DateTime(new DateOnly(2025, 1, 1), TimeOnly.MinValue, DateTimeKind.Utc);
+                var date = new DateTime(new DateOnly(2025, 1, 1), TimeOnly.MinValue, DateTimeKind.Utc); // PR: UTCnow
                 var energy = 3_600_000_000;
                 ApplicationVariables.SetMaxEnergyInJoule(energy);
                 Title($"Handling Installation {installationId}");
@@ -38,7 +38,7 @@ static class Program
                 Log($"Max energy in Kwh: {energy / 36_00_000}");
 
 
-                var tasks = new List<Task>();
+                var tasks = new List<Task>(); // PR: Remove unused variable
                 var instance = new AzureBlobCtrl(containerName, installationId);
                 for (int i = date.Year; i >= 2014; i--)
                 {
@@ -52,7 +52,7 @@ static class Program
                         }
                         else
                         {
-                            await instance.LoadPT();
+                            await instance.LoadPT(); // PR: Unused
                             await instance.LetTheMagicHappen(new DateOnly(year, 1, 1));
                         }
                     }

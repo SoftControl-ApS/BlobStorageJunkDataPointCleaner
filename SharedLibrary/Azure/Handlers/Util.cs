@@ -97,9 +97,9 @@ namespace SharedLibrary.Azure
 
         private async Task <ConcurrentBag<Inverter>> ExtractInverters(ProductionDto production)
         {
-            if (production == null)
+            if (production == null) // PR: Infinite recursion if production is null
             {
-                var inverters = GetInverters().Result;
+                var inverters = await GetInverters();
                 return inverters;
             }
 

@@ -32,7 +32,7 @@ public partial class AzureBlobCtrl
     {
         _ptJson = await ReadBlobFile("pt");
 
-        if (IsValidJson(_ptJson))
+        if (IsValidJson(_ptJson)) // PR: Can be removed
         {
             _ptProductionDto = ProductionDto.FromJson(_ptJson);
         }
@@ -46,7 +46,7 @@ public partial class AzureBlobCtrl
     {
         try
         {
-            var blobs = GetAllBlobsAsync().Result
+            var blobs = (await GetAllBlobsAsync())
                          .Where(blob => !blob.Name.Contains("BackUp"))
                          .Where(blob => blob.Name.Contains($"pd{date.Year}") || blob.Name.Contains($"pm{date.Year}") || blob.Name.Contains($"py{date.Year}")).ToList();
 
@@ -94,7 +94,7 @@ public partial class AzureBlobCtrl
     public async Task<bool> CleanYear_AllDaysFiles(DateOnly date)
     {
         var blobs = _blobs
-                    .OfType<CloudBlockBlob>()
+                    .OfType<CloudBlockBlob>() // PR: All blobs are CloudBlockBlob
                     .Where(blob => blob.Name.Contains($"pd{date.Year}"))
                     .Where(blob => !blob.Name.ToLower().Contains("backup"))
                     .ToList();
@@ -125,7 +125,8 @@ public partial class AzureBlobCtrl
                                 $"Inverter: {inv.Id}\t" +
                                 $"Value: {production.Value} date {production.TimeStamp.Value.ToString()}"
                             );
-                            production.Value = 1;
+
+                            production.Value = 0;
                             didChange = true;
                         }
                     }
@@ -137,7 +138,7 @@ public partial class AzureBlobCtrl
                     var result = await BackupAndReplaceOriginalFile(fileName, originalJson, updatedJson);
                     if (result)
                     {
-                        _editedFiles.TryAdd(fileName, updatedJson);
+                        _editedFiles.TryAdd(fileName, updatedJson); // PR: Remove to avoid memory leak
                         LogSuccess("fileName: " + fileName + " Was updated ");
                     }
                     else
@@ -169,8 +170,8 @@ public partial class AzureBlobCtrl
             foreach (var month in monthsList)
             {
                 var monthGroup = month.ToList();
-                var result = ProcessInverterProductionAsync(monthGroup).Result;
-                if (!IsValidJson(result))
+                var result = await ProcessInverterProductionAsync(monthGroup);
+                if (!IsValidJson(result)) // PR: Can be removed
                 {
                     LogError("Could Not Update PD");
                 }
@@ -234,7 +235,7 @@ public partial class AzureBlobCtrl
             };
 
             await ForcePublishAndRead($"py{date.Year}", ProductionDto.ToJson(productionYear));
-            var jsonYearResult = await ReadBlobFile($"py{date.Year}");
+            var jsonYearResult = await ReadBlobFile($"py{date.Year}"); // PR: ReadBlobFile is returned from ForcePublishAndRead above
 
             return jsonYearResult;
         }

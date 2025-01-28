@@ -28,7 +28,9 @@ public partial class AzureBlobCtrl
     {
         get
         {
-            if (_blobs == null)
+            // PR: If this is true the it will recursively call itself until the stack overflows and the program crashes.
+            // Maybe just log the error and return null? Or limit the number of retries?
+            if (_blobs == null) 
             {
                 _blobs = GetAllBlobsAsync().Result;
             }
@@ -74,7 +76,7 @@ public partial class AzureBlobCtrl
 
     private async Task<string> ForcePublishAndRead(string fileName, string json)
     {
-        if (!IsValidJson(json))
+        if (!IsValidJson(json)) // PR: Can be removed
         {
             LogError("Invalid updated Json is null");
             return null;

@@ -16,7 +16,7 @@ public partial class ProductionDto
 {
     public static ProductionDto FromJson(string json)
     {
-        if (SharedLibrary.Azure.AzureBlobCtrl.IsValidJson(json))
+        if (SharedLibrary.Azure.AzureBlobCtrl.IsValidJson(json)) // PR: Can be removed
         {
             // Replace NaN with null
             json = json.Replace("NaN", "null");
