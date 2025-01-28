@@ -125,26 +125,33 @@ public partial class AzureBlobCtrl
 
     async Task<List<MonthProductionDTO>> GetYear_MonthFilessAsync(DateOnly date)
     {
+        var allBlobs = await GetAllBlobsAsync();
         var monthsFiles = new List<MonthProductionDTO>();
         var tasks = new List<Task<MonthProductionDTO>>();
+        var yearFiles = allBlobs.Where(blob => blob.Name.Contains($"pm{date.Year:D4}")).ToList();
 
-        for (int month = 1; month <= 12; month++)
+
+        foreach (var year in yearFiles)
         {
-            var requestDate = new DateOnly(date.Year, month, 1);
-            string filename = GetFileName(requestDate, FileType.Month);
+            string filename = GetFileName(year);
+            var productionDate = ExtractDateFromFileName(GetFileName(filename));
 
-            // Start the asynchronous read operation and add the task to the list
             tasks.Add(ReadBlobFile(filename).ContinueWith(result =>
             {
-                return new MonthProductionDTO()
+                if (result.Result != null)
                 {
-                    FileType = FileType.Year,
-                    Date = requestDate,
-                    DataJson = result.Result
-                };
+
+                    var some = new MonthProductionDTO()
+                    {
+                        FileType = FileType.Year,
+                        Date = productionDate,
+                        DataJson = result.Result
+                    };
+                    return some;
+                }
+                return null;
             }));
         }
-
 
         var results = await Task.WhenAll(tasks);
         monthsFiles.AddRange(results);

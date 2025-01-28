@@ -28,7 +28,6 @@ public partial class ProductionDto
             catch (JsonReaderException ex)
             {
                 LogError($"JSON Deserialization Error: {ex.Message}. JSON: {json}");
-                throw; // or handle accordingly
             }
         }
         return null;
@@ -36,16 +35,21 @@ public partial class ProductionDto
 
     public static string ToJson(ProductionDto production)
     {
-        if (production == null)
-        try{
-        return JsonConvert.SerializeObject(production, Converter.Settings);
-        
+        try
+        {
+                var prod = production;
+                prod.TimeStamp = production.Inverters.First().Production.First().TimeStamp;
+                return JsonConvert.SerializeObject(production, Converter.Settings);
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
             if (production != null)
             {
-                LogError("Convert DTO to Json"+ e.Message);
+                LogError($"DTO to Json Error: {ex.Message}. exc: {ex}");
+            }
+            else
+            {
+                LogError($" Failed to serialize DTO to Json Error: {ex.Message}. exc: {ex}");
             }
 
             return null;

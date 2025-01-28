@@ -3,6 +3,7 @@ using SharedLibrary.Models;
 using SharedLibrary.util;
 using System.Collections.Concurrent;
 using static SharedLibrary.util.Util;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SharedLibrary.Azure;
 
@@ -30,89 +31,73 @@ public partial class AzureBlobCtrl
     //    return updatedJson;
     //}
 
-    ProductionDto FinalHandle(ProductionDto oldProduction, List<Inverter> updatedInverters, DateOnly date)
-    {
-
-        foreach (var inverter in updatedInverters)
-        {
-            double yearTotal = inverter.Production
-                .Where(x => x.Value.HasValue && !double.IsNaN(x.Value.Value))
-                .Sum(x => x.Value.Value);
-
-            if (inverter.Production.Any(x => x.TimeStamp.Value.Year == date.Year))
-            {
-                oldProduction.Inverters.Where(inv => inv.Id == inverter.Id)
-                .FirstOrDefault()
-                .Production
-                .Where(x => x.TimeStamp.Value.Year == date.Year)
-                .FirstOrDefault()
-                .Value = yearTotal;
-
-            }
-            {
-                oldProduction.Inverters.Where(inv => inv.Id == inverter.Id)
-                .FirstOrDefault()
-                .Production
-                .Add(new DataPoint()
-                {
-                    Quality = 1,
-                    TimeStamp = new DateTime(date.Year, 1, 1),
-                    Value = yearTotal
-                });
-            }
-        }
-
-        ProductionDto productionTotal = new ProductionDto()
-        {
-            TimeStamp = oldProduction.TimeStamp,
-            TimeType = oldProduction.TimeType,
-            Inverters = oldProduction.Inverters
-        };
-
-        return productionTotal;
-    }
-
-    //private async Task<List<Inverter>> GetUpdatedInverterYearProductionData(
-    //    IEnumerable<Inverter> inverters, DateOnly date)
+    //ProductionDto FinalHandle(ProductionDto oldProduction, List<Inverter> updatedInverters, DateOnly date)
     //{
-    //    try
+
+    //    foreach (var inverter in updatedInverters)
     //    {
-    //        var totalProduction = await UpdateYearFiles(date, UpdateType.Read);
-    //        return ProductionDto.FromJson(totalProduction).Inverters;
-    //    }
-    //    catch (Exception e)
-    //    {
-    //        LogError($"Error: {e}");
+    //        double yearTotal = inverter.Production
+    //            .Where(x => x.Value.HasValue && !double.IsNaN(x.Value.Value))
+    //            .Sum(x => x.Value.Value);
+
+    //        if (inverter.Production.Any(x => x.TimeStamp.Value.Year == date.Year))
+    //        {
+    //            oldProduction.Inverters.Where(inv => inv.Id == inverter.Id)
+    //            .FirstOrDefault()
+    //            .Production
+    //            .Where(x => x.TimeStamp.Value.Year == date.Year)
+    //            .FirstOrDefault()
+    //            .Value = yearTotal;
+
+    //        }
+    //        {
+    //            oldProduction.Inverters.Where(inv => inv.Id == inverter.Id)
+    //            .FirstOrDefault()
+    //            .Production
+    //            .Add(new DataPoint()
+    //            {
+    //                Quality = 1,
+    //                TimeStamp = new DateTime(date, TimeOnly.MinValue, DateTimeKind.Utc),
+    //                Value = yearTotal
+    //            });
+    //        }
     //    }
 
-    //    return null;
+    //    ProductionDto productionTotal = new ProductionDto()
+    //    {
+    //        TimeStamp = oldProduction.TimeStamp,
+    //        TimeType = oldProduction.TimeType,
+    //        Inverters = oldProduction.Inverters
+    //    };
+
+    //    return productionTotal;
     //}
 
     async Task<ConcurrentBag<ProductionDto>> GetYearsAsync()
     {
+        var yearBlolbBlocks = GetAllBlobsAsync().Result
+        .Where(blob =>
+        blob.Name.Contains($"py")
+        && !blob.Name.Contains("BackUp")
+        ).ToList();
+
+
         var productions = new ConcurrentBag<ProductionDto>();
-
-        for (int year = DateTime.Now.Year; year >= 2014; year--)
+        foreach (var yearblob in yearBlolbBlocks)
         {
-            string response = await ReadBlobFile($"py{year}");
+            string response = await ReadBlobFile(GetFileName(yearblob));
 
-            if (IsValidJson(response))
+            if (response != null)
             {
                 var yearProd = ProductionDto.FromJson(response);
                 productions.Add(yearProd);
             }
             else
             {
+                LogError("Could not handle file: " + GetFileName(yearblob));
             }
 
         }
-
         return productions;
-    }
-
-    class ProductionDtoTotal
-    {
-        public DateOnly Date { get; set; }
-        public ProductionDto Production { get; set; }
     }
 }

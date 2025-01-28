@@ -1,0 +1,26 @@
+{
+  "filename": "Log.cs",
+  "category": "Bug Reports",
+  "issues": [
+    {
+      "type": "Code Style",
+      "severity": "Low",
+      "description": "The methods `Log`, `LogSuccess`, `Title`, `LogError`, and `Message` have redundant code. They all set the foreground color, write to the console, and reset the color. This could be extracted into a private helper method to reduce duplication."
+    },
+    {
+      "type": "Performance",
+      "severity": "Low",
+      "description": "The `Title` method uses `FiggleFonts.Standard.Render(title)` which might be computationally expensive for large titles or frequent calls. Consider caching the rendered banner if the same title is used repeatedly."
+    },
+    {
+      "type": "Code Style",
+      "severity": "Low",
+      "description": "The `Message` method has a commented-out line `//var banner = FiggleFonts.Alligator2.Render(message);`. If this functionality is not needed, it should be removed to avoid confusion."
+    },
+    {
+      "type": "Code Style",
+      "severity": "Low",
+      "description": "The methods `Log`, `LogSuccess`, `LogError` are very similar. Consider consolidating them into a single method with a parameter to specify the log level (e.g., Info, Success, Error) and map the log level to the corresponding color internally."
+    }
+  ]
+}

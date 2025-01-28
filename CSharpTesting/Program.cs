@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using SharedLibrary.Models;
 using static SharedLibrary.util.Util;
+using System.Collections.Concurrent;
 
 namespace CSharpTesting;
 
@@ -23,15 +24,15 @@ static class Program
         //     installationIds.Add(i);
         // }
 
-        // Parallel.ForEachAsync(installationIds, CancellationToken.None, async installationID =>
+        Parallel.ForEach(installationIds, async installationID =>
         // await Parallel.ForEachAsync(installationIds, CancellationToken.None, // async (installationID, cancellationToken) =>
-        foreach (var installationID in installationIds)
+        //foreach (var installationID in installationIds)
         {
             try
             {
                 var installationId = installationID.ToString();
                 var containerName = "installations";
-                var date = new DateTime(2024, 1, 1, 1, 1, 1, DateTimeKind.Utc);
+                var date = new DateTime(2025, 1, 1, 1, 1, 1, DateTimeKind.Utc);
                 var energy = 3_600_000_000;
                 ApplicationVariables.SetMaxEnergyInJoule(energy);
                 Title($"Handling Installation {installationId}");
@@ -39,8 +40,6 @@ static class Program
                 Log($"date: {date.ToString()}");
                 Log($"Max energy in Kwh: {energy / 36_00_000}");
 
-
-                var instance = new AzureBlobCtrl(containerName, installationId);
 
                 var tasks = new List<Task>();
                 for (int i = date.Year; i >= 2014; i--)
@@ -50,7 +49,17 @@ static class Program
                     {
                         try
                         {
-                            return await instance.LetTheMagicHappen(new DateOnly(year, 1, 1));
+                            var instance = new AzureBlobCtrl(containerName, installationId);
+                            if (!await instance.CheckForExistingFiles(date))
+                            {
+                                Log($"No FIle found for this date {date.ToString()}");
+                                return null;
+                            }
+                            else
+                            {
+                                await instance.LoadPT();
+                                return await instance.LetTheMagicHappen(new DateOnly(year, 1, 1));
+                            }
                         }
                         catch (Exception e)
                         {
@@ -62,11 +71,9 @@ static class Program
                     }));
                 }
 
-                    Stopwatch sw = new Stopwatch();
-                    sw.Start();
-                    await Task.WhenAll(tasks);
-
-                    Log("Mission start");
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+                Task.WaitAll(tasks);
 
                 sw.Stop();
                 Log("Operatoin took" + sw.ElapsedMilliseconds / 1000 + "s");
@@ -80,7 +87,7 @@ static class Program
                 Failed.Add($"Exception{Guid.NewGuid().ToString()}", e.Message);
             }
         }
-        // );
+         );
 
         string directoryPath = @"C:\Users\KevinBamwesa\Desktop";
         string filePath = Path.Combine(directoryPath, $"{Guid.NewGuid()}.txt");
@@ -100,11 +107,5 @@ static class Program
                 await tw.WriteLineAsync(s.Value);
             }
         }
-
-        // Console.ReadLine();
-        // Console.ReadLine();
-        // Console.ReadLine();
-        // Console.ReadLine();
     }
-    
 }

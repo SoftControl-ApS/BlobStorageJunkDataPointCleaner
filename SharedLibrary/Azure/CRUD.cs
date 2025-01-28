@@ -20,7 +20,7 @@ namespace SharedLibrary.Azure
         #region Create
 
         public async Task<bool> CreateAndUploadBlobFile(string jsonContent, string fileName,
-                                                        string containerName = "installations")
+                                                        string containerName = "installations", string source = "")
         {
             string zipFileName = $"{fileName}.zip";
             CloudBlobContainer container = GetContainerReference(containerName);
@@ -60,7 +60,10 @@ namespace SharedLibrary.Azure
             var json = await ReadBlobFile($"{fileName}.json", $"{fileName}.zip", InstallationId);
 
             if (!IsValidJson(json))
+            {
                 LogError($"READ: Invalid Json- {fileName} response {json}");
+                return null;
+            }
             return json;
         }
 
@@ -69,45 +72,46 @@ namespace SharedLibrary.Azure
             if (string.IsNullOrEmpty(sn) && !string.IsNullOrEmpty(InstallationId))
                 sn = InstallationId;
             else if (string.IsNullOrEmpty(sn) && string.IsNullOrEmpty(InstallationId))
-                throw new ArgumentException("Either 'InstallationId' or'sn' parameter must be provided.");
+                LogError("Either 'InstallationId' or'sn' parameter must be provided.");
 
             if (!zipFileName.EndsWith(".zip"))
-                throw new ArgumentException("file name must end with .zip", nameof(zipFileName));
+                LogError("file name must end with .zip");
             if (!jsonFileName.EndsWith(".json"))
-                throw new ArgumentException("file name must end with .json", nameof(jsonFileName));
+                LogError("file name must end with .json");
 
             string json = "null";
 
             CloudBlockBlob blobFile = await GetBlockBlobReference(zipFileName, sn);
-            if (blobFile == null)
-                return "NOTFOUND";
-            try
+            if (blobFile != null)
             {
-                using (var zipStream = new MemoryStream())
+
+                try
                 {
-                    await blobFile.DownloadToStreamAsync(zipStream);
-                    ZipArchive archive = new ZipArchive(zipStream);
-                    ZipArchiveEntry? zipArchiveEntry = archive.GetEntry(jsonFileName);
-                    if (zipArchiveEntry != null)
+                    using (var zipStream = new MemoryStream())
                     {
-                        using (StreamReader sr = new StreamReader(zipArchiveEntry.Open()))
+                        await blobFile.DownloadToStreamAsync(zipStream);
+                        ZipArchive archive = new ZipArchive(zipStream);
+                        ZipArchiveEntry? zipArchiveEntry = archive.GetEntry(jsonFileName);
+                        if (zipArchiveEntry != null)
                         {
-                            json = await sr.ReadToEndAsync();
+                            using (StreamReader sr = new StreamReader(zipArchiveEntry.Open()))
+                            {
+                                json = await sr.ReadToEndAsync();
+                            }
+                        }
+                        else
+                        {
+                            LogError("ReadBlobFile() -> zip entry was null");
                         }
                     }
-                    else
-                    {
-                        LogError("ReadBlobFile() -> zip entry was null");
-                    }
+
+                    return json;
                 }
-
-                return json;
+                catch (Exception e)
+                {
+                    LogError("" + e.Message);
+                }
             }
-            catch (Exception e)
-            {
-                LogError("" + e.Message);
-            }
-
             return null;
         }
 

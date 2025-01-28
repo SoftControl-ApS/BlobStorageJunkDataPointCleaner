@@ -9,6 +9,17 @@ namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
+
+        private ConcurrentBag<Inverter> _inverters = new ConcurrentBag<Inverter>();
+        private ConcurrentBag<Inverter> Inverters
+        {
+            get => _inverters;
+            set
+            {
+                _inverters = value;
+            }
+        }
+
         private async Task<string> ProcessBlobAsync(IListBlobItem item)
         {
             if (item is not CloudBlockBlob blobItem)
@@ -84,12 +95,22 @@ namespace SharedLibrary.Azure
         //}
 
 
+        private async Task <ConcurrentBag<Inverter>> ExtractInverters(ProductionDto production)
+        {
+            if (production == null)
+            {
+                var inverters = GetInverters().Result;
+                return inverters;
+            }
+
+            return ExtractInverters(production.Inverters);
+        }
         private List<Inverter> InitializeInvertersToList(IEnumerable<Inverter> inverters)
         {
-            return InitializeInverters(inverters).ToList();
+            return ExtractInverters(inverters).ToList();
         }
 
-        private ConcurrentBag<Inverter> InitializeInverters(IEnumerable<Inverter> inverters)
+        private ConcurrentBag<Inverter> ExtractInverters(IEnumerable<Inverter> inverters)
         {
             var updatedInverters = new ConcurrentBag<Inverter>();
             Parallel.ForEach(inverters, inverter =>
@@ -103,23 +124,24 @@ namespace SharedLibrary.Azure
             return updatedInverters;
         }
 
-        private  ConcurrentBag<Inverter> GetInverters()
+        private async Task<ConcurrentBag<Inverter>> GetInverters()
         {
-            if (!_inverters.Any())
+            if (!Inverters.Any())
             {
-                return InitInverters();
+                return await InitInverters();
             }
 
+            return Inverters;
+        }
+
+        async Task<ConcurrentBag<Inverter>> InitInverters()
+        {
+            var production = ProductionDto.FromJson(await ReadBlobFile("pt"));
+            var invs = await ExtractInverters(production);
+            this._inverters = invs;
             return _inverters;
         }
 
-        ConcurrentBag<Inverter> InitInverters()
-        {
-            _inverters = InitializeInverters(ProductionDto.FromJson(ReadBlobFile("pt").Result).Inverters);
-            return _inverters;
-        }
-        
-        private ConcurrentBag<Inverter> _inverters = new ConcurrentBag<Inverter>();
         
 
         //private async Task<List<Inverter>> UpdateInverterProductionData(IEnumerable<Inverter> inverters, int year)

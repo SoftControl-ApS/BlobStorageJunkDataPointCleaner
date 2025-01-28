@@ -139,49 +139,49 @@ public partial class AzureBlobCtrl
     //    return updatedJson;
     //}
 
-    private async Task<bool> CreateNewYearFile(string json, string fileName)
-    {
-        var res = await CreateAndUploadBlobFile(json, fileName);
-        return res;
-    }
+    // private async Task<bool> CreateNewYearFile(string json, string fileName)
+    // {
+    //     var res = await CreateAndUploadBlobFile(json, fileName);
+    //     return res;
+    // }
 
 
-    private async Task<string> GenerateEmptyYearFile(DateOnly date, CancellationToken cancellationToken)
-    {
-        var datetime = new DateTime(date.Year, date.Month, 1);
-        datetime = DateTime.SpecifyKind(datetime, DateTimeKind.Utc);
-        var yearProduction = new ProductionDto()
-        {
-            TimeType = (int)FileType.Year,
-            TimeStamp = datetime,
-            Inverters = GetInverters().ToList()
-        };
+    //private async Task<string> GenerateEmptyYearFile(DateOnly date, CancellationToken cancellationToken)
+    //{
+    //    var datetime = new DateTime(date, TimeOnly.MinValue, DateTimeKind.Utc);
+    //    datetime = DateTime.SpecifyKind(datetime, DateTimeKind.Utc);
+    //    var yearProduction = new ProductionDto()
+    //    {
+    //        TimeType = (int)FileType.Year,
+    //        TimeStamp = datetime,
+    //        Inverters = (await GetInverters()).ToList()
+    //    };
 
-        await Parallel.ForEachAsync(yearProduction.Inverters, cancellationToken, async (inverter, token) =>
-        {
-            for (int month = 1; month <= 12; month++)
-            {
-                inverter.Production.Add(new DataPoint()
-                {
-                    Quality = 0,
-                    TimeStamp = DateTime.SpecifyKind(new DateTime(yearProduction.TimeStamp.Value.Year, month, 1), DateTimeKind.Utc)
-                });
-            }
-        });
+    //    await Parallel.ForEachAsync(yearProduction.Inverters, cancellationToken, async (inverter, token) =>
+    //    {
+    //        for (int month = 1; month <= 12; month++)
+    //        {
+    //            inverter.Production.Add(new DataPoint()
+    //            {
+    //                Quality = 0,
+    //                TimeStamp = DateTime.SpecifyKind(new DateTime(yearProduction.TimeStamp.Value.Year, month, 1), DateTimeKind.Utc)
+    //            });
+    //        }
+    //    });
 
-        var json = ProductionDto.ToJson(yearProduction);
+    //    var json = ProductionDto.ToJson(yearProduction);
 
-        await WriteJson(json, $"py{date.Year}");
+    //    await WriteJson(json, $"py{date.Year}");
 
-        return json;
-    }
+    //    return json;
+    //}
 
-    private async Task<string> GenerateAndUploadEmptyYearFile(string fileName)
-    {
-        var year = ExtractYearFromFileName(fileName);
+    //private async Task<string> GenerateAndUploadEmptyYearFile(string fileName)
+    //{
+    //    var year = ExtractYearFromFileName(fileName);
 
-        return await GenerateEmptyYearFile(new DateOnly(year, 1, 1), CancellationToken.None);
-    }
+    //    return await GenerateEmptyYearFile(new DateOnly(year, 1, 1), CancellationToken.None);
+    //}
 
 
     // async Task<List<Inverter>> GetInstallationInverters()

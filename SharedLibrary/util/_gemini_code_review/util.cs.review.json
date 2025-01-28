@@ -1,0 +1,36 @@
+{
+  "filename": "util.cs",
+  "category": "Basic Code Review",
+  "issues": [
+    {
+      "type": "Code Duplication",
+      "severity": "Medium",
+      "description": "The `GetFileName(string blobName)` and `GetFileName(CloudBlockBlob blob)` methods have identical logic. This duplication can lead to maintenance issues if the logic needs to be changed in the future."
+    },
+    {
+      "type": "Maintainability",
+      "severity": "Low",
+      "description": "The logic for removing file extensions (.zip and .json) is hardcoded. If new file types are added in the future, this code will need to be updated in multiple places."
+    },
+    {
+      "type": "Naming",
+      "severity": "Low",
+      "description": "The class name `Util` is very generic. A more descriptive name related to file or blob operations would improve readability."
+    },
+    {
+      "type": "Design",
+      "severity": "Low",
+      "description": "The `GetFileName(DateOnly date, FileType filetype)` method uses a switch statement that could be replaced with a more concise approach, such as a dictionary lookup or a string interpolation based on a pattern."
+    },
+    {
+      "type": "Maintainability",
+      "severity": "Low",
+      "description": "The file name prefixes ('pd', 'pm', 'py', 'pt') are hardcoded. It would be better to store these in a configuration or a separate class for easier modification."
+    },
+    {
+      "type": "Missing Documentation",
+      "severity": "Low",
+      "description": "The methods lack XML documentation comments explaining their purpose, parameters, and return values. Adding documentation would improve code understanding and maintainability."
+    }
+  ]
+}

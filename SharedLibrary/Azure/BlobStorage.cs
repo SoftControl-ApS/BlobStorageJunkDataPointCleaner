@@ -23,7 +23,7 @@ public partial class AzureBlobCtrl
     public string ContainerName { get; set; } = null;
 
     List<CloudBlockBlob> _blobs = null;
-
+    object lockblobs { get; } = new object();
     List<CloudBlockBlob> blobs
     {
         get
@@ -37,12 +37,24 @@ public partial class AzureBlobCtrl
         }
     }
 
+    async Task<bool> RefreshBlobs()
+    {
+
+        _blobs = GetAllBlobsAsync().Result;
+
+        if (_blobs != null)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
 
     public AzureBlobCtrl(string containerName, string installationId)
     {
         this.ContainerName = containerName;
         this.InstallationId = installationId;
-        LoadPT();
     }
 
     private async Task<bool> BackupAndReplaceOriginalFile(string fileName, string? originalJson, string updatedJson)
@@ -56,16 +68,16 @@ public partial class AzureBlobCtrl
         fileName = GetFileName(fileName);
 
         if (fileName.Contains("pd"))
-            await ForcePublish($"{fileName}_BackUp", originalJson);
-        return await ForcePublish(fileName, updatedJson);
+            await ForcePublish($"{fileName}_BackUp", originalJson, source: "PUBLISH");
+        return await ForcePublish(fileName, updatedJson, source: "PUBLISH");
     }
 
     private async Task<string> ForcePublishAndRead(string fileName, string json)
     {
-        if (IsValidJson(json) == null)
+        if (!IsValidJson(json))
         {
-            LogError("updated Json is null");
-            throw new ArgumentNullException("Invalid json file");
+            LogError("Invalid updated Json is null");
+            return null;
         }
 
         fileName = GetFileName(fileName);
@@ -74,17 +86,17 @@ public partial class AzureBlobCtrl
         return await ReadBlobFile(fileName);
     }
 
-    private async Task<bool> ForcePublish(string fileName, string json)
+    private async Task<bool> ForcePublish(string fileName, string json, string source = "PUBLISH")
     {
         if (!IsValidJson(json))
         {
             LogError("Publish Failed: Invalid Json: " + json.ToString());
-            throw new ArgumentNullException("Invalid json file");
+            return false;
         }
 
         fileName = GetFileName(fileName);
         await DeleteBlobFileIfExist(fileName);
-        return await CreateAndUploadBlobFile(json, fileName, source: "PUBLISH");
+        return await CreateAndUploadBlobFile(json, fileName, source: source);
     }
 
     #region TDO

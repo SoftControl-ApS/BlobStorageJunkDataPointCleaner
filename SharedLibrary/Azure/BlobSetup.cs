@@ -24,31 +24,36 @@ public partial class AzureBlobCtrl
 
     private async Task<List<CloudBlockBlob>> GetAllBlobsAsync(string containerName = "installations")
     {
+
         var snDir = GetContainerReference(containerName).GetDirectoryReference(InstallationId);
         BlobContinuationToken continuationToken = null;
 
         do
         {
-            var resultSegment = await snDir.ListBlobsSegmentedAsync(continuationToken);
+            var resultSegment = snDir.ListBlobsSegmentedAsync(continuationToken).Result;
             continuationToken = resultSegment.ContinuationToken;
 
-            _blobs = resultSegment.Results.OfType<CloudBlockBlob>().ToList();
+            lock (lockblobs)
+            {
+                _blobs = resultSegment.Results.OfType<CloudBlockBlob>().ToList();
+            }
         } while (continuationToken != null);
 
         return blobs;
     }
 
-    public async Task<CloudBlockBlob?> GetBlockBlobReference(string zip, string containerName = "installations")
+    public async Task<CloudBlockBlob> GetBlockBlobReference(string zip, string containerName = "installations")
     {
-        CloudBlockBlob? blobFile = blobs.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
+        var blobs = await GetAllBlobsAsync();
+        var blobFile = blobs.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
         if (blobFile == null)
         {
-            if (blobFile == null && zip.Contains("pd"))
-            {
-                await GenerateAndUploadEmptyDayFile(ExtractDateFromFileName(zip));
-                blobFile = blobs.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
-                return blobFile;
-            }
+            //if (blobFile == null && zip.Contains("pd"))
+            //{
+            //    await GenerateAndUploadEmptyDayFile(ExtractDateFromFileName(zip));
+            //    blobFile = blobs.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
+            //    return blobFile;
+            //}
 
             LogError($"Blob '{zip}' in installation '{InstallationId}' does not exist.");
             FailedFiles.Add(new(zip, "GetBlockBlobReference() x2"));
