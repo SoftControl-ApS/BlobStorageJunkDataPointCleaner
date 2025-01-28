@@ -24,7 +24,7 @@ public partial class AzureBlobCtrl
 
     List<CloudBlockBlob> _blobs = null;
     object lockblobs { get; } = new object();
-    List<CloudBlockBlob> blobs
+    List<CloudBlockBlob> FetchedBlobsList
     {
         get
         {

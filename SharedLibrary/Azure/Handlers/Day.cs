@@ -12,70 +12,7 @@ namespace SharedLibrary.Azure;
 
 public partial class AzureBlobCtrl
 {
-    //public async Task<bool> GenerateDayFile(DateOnly date)
-    //{
-    //    var fileName = $"pd{date.Year}{date.Month:D2}{date.Day:D2}";
-    //    var originalJson = await ReadBlobFile(fileName);
     ProductionDto productionDto = null;
-    //    if (originalJson != "NOTFOUND")
-    //    {
-    //        productionDto = ProductionDto.FromJson(originalJson);
-    //        Parallel.ForEach(productionDto.Inverters, inv =>
-    //        {
-    //            foreach (var production in inv.Production)
-    //            {
-    //                if (production.Value >= ApplicationVariables.MaxEnergyInJoules)
-    //                {
-    //                    production.Value = 0;
-    //                }
-    //            }
-    //        });
-
-    //        var updatedJson = ProductionDto.ToJson(productionDto);
-    //        await BackupAndReplaceOriginalFile(fileName, null, updatedJson);
-    //        return true;
-    //    }
-    //    else if (originalJson == "NOTFOUND")
-    //    {
-    //        var datetime = DateTime.SpecifyKind(new DateTime(date, new TimeOnly(0, 0, 0)), DateTimeKind.Utc);
-    //        productionDto = new ProductionDto()
-    //        {
-    //            TimeType = (int)FileType.Day,
-    //            TimeStamp = datetime,
-    //            Inverters = await GetInstallationInverters()
-    //        };
-
-    //        Parallel.ForEach(productionDto.Inverters, inv =>
-    //        {
-    //            inv.Production = CreateEmptyDayDatapointList(date);
-    //        });
-
-
-    //        var updatedJson = ProductionDto.ToJson(productionDto);
-    //        await CreateAndUploadBlobFile(updatedJson, fileName);
-
-    //        return true;
-    //    }
-
-    //    return false;
-    //}
-
-    //private List<DataPoint> CreateEmptyDayDatapointList(DateOnly date)
-    //{
-    //    var dataPoints = new List<DataPoint>();
-    //    for (int i = 0; i < 24; i++)
-    //    {
-    //        dataPoints.Add(new DataPoint()
-    //        {
-    //            Quality = 0,
-    //            TimeStamp = DateTime.SpecifyKind(new DateTime(date, new TimeOnly(i, 0, 0)), DateTimeKind.Utc),
-    //            Value = 0
-
-    //        });
-    //    }
-
-    //    return dataPoints;
-    //}
 
     public async Task<string> HandleDayFiles(string fileName)
     {
@@ -140,39 +77,6 @@ public partial class AzureBlobCtrl
         return true;
     }
 
-    // private async Task<string> HandleDayFiles(DateOnly date)
-    // {
-    //     var fileName = $"pd{date.Year}{date.Month:D2}{date.Day:D2}";
-    //     var originalJson = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
-    //
-    //     var productionDto = ProductionDto.FromJson(originalJson);
-    //
-    //     bool didChange = false;
-    //
-    //     Parallel.ForEach(productionDto.Inverters, inv =>
-    //     {
-    //         foreach (var production in inv.Production)
-    //         {
-    //             if (production.Value >= ApplicationVariables.MaxEnergyInJoules)
-    //             {
-    //                 production.Value = 0;
-    //                 didChange = true;
-    //             }
-    //         }
-    //     });
-    //
-    //     if (didChange)
-    //     {
-    //         var updatedJson = ProductionDto.ToJson(productionDto);
-    //         await BackupAndReplaceOriginalFile(fileName, originalJson, updatedJson);
-    //         return updatedJson;
-    //     }
-    //     else
-    //     {
-    //         return originalJson;
-    //     }
-    // }
-
     private async Task<string> GenerateAndUploadEmptyDayFile(string fileName)
     {
         var date = ExtractDateFromFileName(fileName);
@@ -214,18 +118,6 @@ public partial class AzureBlobCtrl
             return json;
         return "Successfully Generated";
     }
-
-    // async Task<string> GetDayFile(DateOnly date)
-    // {
-    //     string fileName = $"pd{date.Year}{date.Year:D2}{date.Year:D2}";
-    //     var json = await ReadBlobFile(fileName + ".json", fileName + ".zip", InstallationId);
-    //
-    //     if (IsValidJson(json))
-    //         return json;
-    //     else
-    //         return null;
-    // }
-
 
     async Task<MonthProductionDTO?> GetDayFile(DateOnly date)
     {
@@ -280,16 +172,21 @@ public partial class AzureBlobCtrl
         var allBlobs = await GetAllBlobsAsync();
         for (int month = 1; month <= 12; month++)
         {
-            var filteredBlobs = allBlobs.Where(blob => blob.Name.Contains($"pd{date.Year}{month:D2}")).ToList();
+            var filteredBlobs = allBlobs.Where(blob => blob.Name.Contains($"pd{date.Year}{month:D2}") 
+            && !blob.Name.ToLower().Contains($"backup")).ToList();
+            filteredBlobs = filteredBlobs.OrderBy(b => b.Name).ToList();
 
             tasks.Add(Task.Run(async () =>
             {
                 var innerTasks = filteredBlobs.Select(async blob =>
                 {
-                    MonthProductionDTO? result = await GetDayFile(GetFileName(blob));
-                    if (result != null)
+                    if (blob != null)
                     {
-                        dayFiles.Add(result);
+                        MonthProductionDTO? result = await GetDayFile(GetFileName(blob));
+                        if (result != null)
+                        {
+                            dayFiles.Add(result);
+                        }
                     }
                 });
 

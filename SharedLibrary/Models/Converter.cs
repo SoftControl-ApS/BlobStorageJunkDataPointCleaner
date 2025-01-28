@@ -17,10 +17,10 @@ namespace SharedLibrary.Models
     {
         public static readonly JsonSerializerSettings Settings = new JsonSerializerSettings
         {
-            MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
-            DateParseHandling = DateParseHandling.DateTimeOffset,
-            MissingMemberHandling = MissingMemberHandling.Ignore,
-            NullValueHandling = NullValueHandling.Ignore
+            //MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
+            //DateParseHandling = DateParseHandling.DateTimeOffset,
+            //MissingMemberHandling = MissingMemberHandling.Ignore,
+            NullValueHandling = NullValueHandling.Include
         };
     }
 }

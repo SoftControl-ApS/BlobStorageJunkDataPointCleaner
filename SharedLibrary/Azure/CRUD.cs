@@ -84,13 +84,13 @@ namespace SharedLibrary.Azure
             CloudBlockBlob blobFile = await GetBlockBlobReference(zipFileName, sn);
             if (blobFile != null)
             {
-
-                try
+                using (var zipStream = new MemoryStream())
                 {
-                    using (var zipStream = new MemoryStream())
+                    await blobFile.DownloadToStreamAsync(zipStream);
+                    zipStream.Position = 0;
+
+                    using (ZipArchive archive = new ZipArchive(zipStream, ZipArchiveMode.Read))
                     {
-                        await blobFile.DownloadToStreamAsync(zipStream);
-                        ZipArchive archive = new ZipArchive(zipStream);
                         ZipArchiveEntry? zipArchiveEntry = archive.GetEntry(jsonFileName);
                         if (zipArchiveEntry != null)
                         {
@@ -104,13 +104,10 @@ namespace SharedLibrary.Azure
                             LogError("ReadBlobFile() -> zip entry was null");
                         }
                     }
+                }
 
-                    return json;
-                }
-                catch (Exception e)
-                {
-                    LogError("" + e.Message);
-                }
+                return json;
+
             }
             return null;
         }

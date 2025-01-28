@@ -39,13 +39,12 @@ public partial class AzureBlobCtrl
             }
         } while (continuationToken != null);
 
-        return blobs;
+        return FetchedBlobsList;
     }
 
     public async Task<CloudBlockBlob> GetBlockBlobReference(string zip, string containerName = "installations")
     {
-        var blobs = await GetAllBlobsAsync();
-        var blobFile = blobs.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
+        var blobFile = FetchedBlobsList.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
         if (blobFile == null)
         {
             //if (blobFile == null && zip.Contains("pd"))
