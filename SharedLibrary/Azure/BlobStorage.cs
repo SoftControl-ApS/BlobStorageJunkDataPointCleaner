@@ -53,8 +53,22 @@ public partial class AzureBlobCtrl
 
         fileName = GetFileName(fileName);
 
+        string backupName = $"{fileName}_BackUp";
         if (fileName.Contains("pd"))
-            await ForcePublish($"{fileName}_BackUp", originalJson, source: "PUBLISH");
+        {
+            var blolb = await GetBlockBlobReference(backupName);
+            try
+            {
+                if (!await blolb.ExistsAsync())
+                {
+                    await ForcePublish(backupName, originalJson, source: "PUBLISH");
+                }
+
+            }
+            catch (Exception)
+            { }
+
+        }
         return await ForcePublish(fileName, updatedJson, source: "PUBLISH");
     }
 

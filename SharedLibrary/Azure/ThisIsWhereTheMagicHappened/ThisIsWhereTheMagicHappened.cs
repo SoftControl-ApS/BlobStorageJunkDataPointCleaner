@@ -111,10 +111,6 @@ public partial class AzureBlobCtrl
                         LogError("Could Not Update filename: " + fileName);
                 }
             }
-            else
-            {
-                //GenerateAndUploadEmptyDayFile(fileName);
-            }
         });
 
         await Task.WhenAll(tasks);
