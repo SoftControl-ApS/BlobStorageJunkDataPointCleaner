@@ -1,54 +1,34 @@
 ﻿#pragma warning disable
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Net.Http.Json;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Newtonsoft.Json;
-using SharedLibrary.Azure;
 using SharedLibrary.Models;
-using static System.Net.Mime.MediaTypeNames;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using static SharedLibrary.Azure.AzureBlobCtrl;
 using static SharedLibrary.util.Util;
 
 namespace SharedLibrary.Azure;
 
 public partial class AzureBlobCtrl
 {
-    private ConcurrentDictionary<string, string> _editedFiles = new ConcurrentDictionary<string, string>();
-    private string _ptJson = string.Empty;
-    private ProductionDto _ptProductionDto;
-    public object ptFile { get; set; } = new object();
-
-    public async Task LoadPT()
-    {
-        _ptJson = await ReadBlobFile("pt");
-
-        if (IsValidJson(_ptJson)) // PR: Can be removed
-        {
-            _ptProductionDto = ProductionDto.FromJson(_ptJson);
-        }
-    }
+    private ConcurrentDictionary<string, string> _editedFiles = new();
 
     public async Task<bool> CheckForExistingFiles(DateTime date)
     {
         return await CheckForExistingFiles(DateOnly.FromDateTime(date));
     }
+
     public async Task<bool> CheckForExistingFiles(DateOnly date)
     {
         try
         {
             var blobs = (await GetAllBlobsAsync())
-                         .Where(blob => !blob.Name.Contains("BackUp"))
-                         .Where(blob => blob.Name.Contains($"pd{date.Year}") || blob.Name.Contains($"pm{date.Year}") || blob.Name.Contains($"py{date.Year}")).ToList();
+                        .Where(blob => !blob.Name.Contains("BackUp"))
+                        .Where(blob =>
+                            blob.Name.Contains($"pd{date.Year}") || blob.Name.Contains($"pm{date.Year}") ||
+                            blob.Name.Contains($"py{date.Year}")).ToList();
+
+            if (!blobs.Any())
+            {
+                Log($"No File found for this date {date.ToString()}");
+            }
 
             return blobs.Any();
         }
@@ -60,7 +40,6 @@ public partial class AzureBlobCtrl
 
     public async Task<string> LetTheMagicHappen(DateOnly date)
     {
-
         var res = await CleanYear_AllDaysFiles(date);
         if (res)
         {
@@ -70,20 +49,8 @@ public partial class AzureBlobCtrl
         {
             Log($"No cleaning needed {date.Year}");
         }
-        if (!_editedFiles.Any())
-        {
-            Log("No Updated needed");
-        }
-        else
-        {
-            Log($"Removed All junks Day DataPoints {date.ToString()}", ConsoleColor.DarkBlue);
-        }
-
-        //await DeleteAllYearFilesExceptDays(date);
-        //Log($"Deleted all yearFiles {date.Year}");
 
         await UpdatePDtoPM(date);
-        Log($"PD -> PM DONE {date.Year}");
 
         await PMToYear(date);
         Log($"PM - > Year DONE {date.Year}");
@@ -94,7 +61,6 @@ public partial class AzureBlobCtrl
     public async Task<bool> CleanYear_AllDaysFiles(DateOnly date)
     {
         var blobs = _blobs
-                    .OfType<CloudBlockBlob>() // PR: All blobs are CloudBlockBlob
                     .Where(blob => blob.Name.Contains($"pd{date.Year}"))
                     .Where(blob => !blob.Name.ToLower().Contains("backup"))
                     .ToList();
@@ -152,6 +118,15 @@ public partial class AzureBlobCtrl
         });
 
         await Task.WhenAll(tasks);
+        
+        if (!_editedFiles.Any())
+        {
+            Log("No Updated needed");
+        }
+        else
+        {
+            Log($"Removed All junks Day DataPoints {date.ToString()}", ConsoleColor.DarkBlue);
+        }
         return true;
     }
 
@@ -184,7 +159,7 @@ public partial class AzureBlobCtrl
         {
             LogError(e);
         }
-
+        Log($"PD -> PM DONE {date.Year}");
     }
 
     public async Task<string> PMToYear(DateOnly date)
@@ -215,27 +190,32 @@ public partial class AzureBlobCtrl
                                                     .Where(x => x.Id == inverter.Id)
                                                     .SelectMany(x => x.Production)
                                                     .Sum(x => (double)x.Value);
-                    var updatedDate = new DateOnly(production.TimeStamp.Value.Year, production.TimeStamp.Value.Month, production.TimeStamp.Value.Day);
+                    var updatedDate = new DateOnly(production.TimeStamp.Value.Year, production.TimeStamp.Value.Month,
+                        production.TimeStamp.Value.Day);
                     inverter.Production.Add(new DataPoint
-                    {
-                        Quality = 1,
-                        TimeStamp = new DateTime(updatedDate, TimeOnly.MinValue, DateTimeKind.Utc),
+                                            {
+                                                Quality = 1,
+                                                TimeStamp = new DateTime(updatedDate, TimeOnly.MinValue,
+                                                    DateTimeKind.Utc),
 
-                        Value = totalProduction,
-                    });
+                                                Value = totalProduction,
+                                            });
                 }
+
                 inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
             }
 
             var productionYear = new ProductionDto()
-            {
-                Inverters = inverters.ToList(),
-                TimeType = (int)FileType.Year,
-                TimeStamp = new DateTime((new DateOnly(date.Year, 1, 1)), TimeOnly.MinValue, DateTimeKind.Utc),
-            };
+                                 {
+                                     Inverters = inverters.ToList(),
+                                     TimeType = (int)FileType.Year,
+                                     TimeStamp = new DateTime((new DateOnly(date.Year, 1, 1)), TimeOnly.MinValue,
+                                         DateTimeKind.Utc),
+                                 };
 
             await ForcePublishAndRead($"py{date.Year}", ProductionDto.ToJson(productionYear));
-            var jsonYearResult = await ReadBlobFile($"py{date.Year}"); // PR: ReadBlobFile is returned from ForcePublishAndRead above
+            var jsonYearResult =
+                await ReadBlobFile($"py{date.Year}"); // PR: ReadBlobFile is returned from ForcePublishAndRead above
 
             return jsonYearResult;
         }
@@ -243,6 +223,7 @@ public partial class AzureBlobCtrl
         {
             LogError($"YearFailed : {date.Year}" + e.Message);
         }
+
         return null;
     }
 
@@ -273,7 +254,8 @@ public partial class AzureBlobCtrl
                             {
                                 Quality = 1,
                                 TimeStamp =
-                                new DateTime((new DateOnly(production.TimeStamp.Value.Year, 1, 1)), TimeOnly.MinValue, DateTimeKind.Utc),
+                                    new DateTime((new DateOnly(production.TimeStamp.Value.Year, 1, 1)),
+                                        TimeOnly.MinValue, DateTimeKind.Utc),
                                 Value = totalProduction,
                             }
                         );
@@ -286,16 +268,18 @@ public partial class AzureBlobCtrl
             );
 
             var productionTotal = new ProductionDto()
-            {
-                Inverters = inverters.ToList(),
-                TimeType = (int)FileType.Total,
-                TimeStamp = new DateTime((new DateOnly(2014, 1, 1)), TimeOnly.MinValue, DateTimeKind.Utc)
-            };
+                                  {
+                                      Inverters = inverters.ToList(),
+                                      TimeType = (int)FileType.Total,
+                                      TimeStamp = new DateTime((new DateOnly(2014, 1, 1)), TimeOnly.MinValue,
+                                          DateTimeKind.Utc)
+                                  };
 
             var res = string.Empty;
 
             res = await UploadProduction(productionTotal, FileType.Total);
 
+            Log($"Year -> PT DONE {date.Year}");
             return res;
         }
         catch (Exception e)
@@ -361,7 +345,6 @@ public partial class AzureBlobCtrl
         var productionJson = ProductionDto.ToJson(production);
         return await ForcePublish(fileName, productionJson);
     }
-
 
 
     // private async Task<string> HandleMonth_DaysFiles(List<MonthProductionDTO> month)
@@ -446,19 +429,19 @@ public partial class AzureBlobCtrl
                     try
                     {
                         date = new DateTime(
-                                                new DateOnly(productionDay.TimeStamp.Value.Year,
-                                                productionDay.TimeStamp.Value.Month,
-                                                productionDay.TimeStamp.Value.Day),
-                                                TimeOnly.MinValue,
-                                                DateTimeKind.Utc
-                                            );
+                            new DateOnly(productionDay.TimeStamp.Value.Year,
+                                productionDay.TimeStamp.Value.Month,
+                                productionDay.TimeStamp.Value.Day),
+                            TimeOnly.MinValue,
+                            DateTimeKind.Utc
+                        );
 
                         productions.Add(new DataPoint
-                        {
-                            Quality = 1,
-                            TimeStamp = date,
-                            Value = inverterProduction.Production.Sum(x => (double)x.Value),
-                        });
+                                        {
+                                            Quality = 1,
+                                            TimeStamp = date,
+                                            Value = inverterProduction.Production.Sum(x => (double)x.Value),
+                                        });
                         totalMonthProduction += inverterProduction.Production.Sum(x => (double)x.Value);
                     }
                     catch (Exception e)
@@ -467,12 +450,13 @@ public partial class AzureBlobCtrl
                     }
                 }
             }
+
             productions.Add(new DataPoint
-            {
-                Quality = 1,
-                TimeStamp = date,
-                Value = totalMonthProduction,
-            });
+                            {
+                                Quality = 1,
+                                TimeStamp = date,
+                                Value = totalMonthProduction,
+                            });
 
             inverter.Production = productions;
             inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
@@ -482,17 +466,15 @@ public partial class AzureBlobCtrl
         }
 
         var production = new ProductionDto
-        {
-            TimeType = (int)FileType.Month,
-            TimeStamp = inverters.First().Production.First().TimeStamp,
-            Inverters = inverters.ToList(),
-        };
+                         {
+                             TimeType = (int)FileType.Month,
+                             TimeStamp = inverters.First().Production.First().TimeStamp,
+                             Inverters = inverters.ToList(),
+                         };
 
         var result = await UploadProduction(production, FileType.Month);
         return IsValidJson(result) ? result : null;
     }
-
-
 
 
     //public async Task<string> ProcessInverterProductionAsync(List<MonthProductionDTO> month)
@@ -559,12 +541,13 @@ public partial class AzureBlobCtrl
     async Task<bool> DeleteAllYearFilesExceptDays(DateOnly date, FileType fileType = FileType.Day)
     {
         var yearBlolbBlocks = GetAllBlobsAsync().Result
-                              .Where(blob =>
-                                  blob.Name.Contains($"py{date.Year}") || blob.Name.Contains($"pm{date.Year}{date.Month}")
-                                  && !blob.Name.Contains("pd")
-                                  && !blob.Name.Contains("BackUp")
-                              )
-                              .ToList();
+                                                .Where(blob =>
+                                                    blob.Name.Contains($"py{date.Year}") ||
+                                                    blob.Name.Contains($"pm{date.Year}{date.Month}")
+                                                    && !blob.Name.Contains("pd")
+                                                    && !blob.Name.Contains("BackUp")
+                                                )
+                                                .ToList();
 
         var tasks = new List<Task>();
         foreach (var blob in yearBlolbBlocks)

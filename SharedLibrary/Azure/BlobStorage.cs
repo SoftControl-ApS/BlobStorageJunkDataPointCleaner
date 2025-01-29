@@ -24,34 +24,18 @@ public partial class AzureBlobCtrl
 
     List<CloudBlockBlob> _blobs = null;
     object lockblobs { get; } = new object();
+
     List<CloudBlockBlob> FetchedBlobsList
     {
         get
         {
-            // PR: If this is true the it will recursively call itself until the stack overflows and the program crashes.
-            // Maybe just log the error and return null? Or limit the number of retries?
-            if (_blobs == null) 
-            {
-                _blobs = GetAllBlobsAsync().Result;
-            }
+            if (_blobs != null)
+                return _blobs;
 
-            return _blobs;
+            Console.WriteLine("Error retrieving fetched blobs");
+            return new List<CloudBlockBlob>();
         }
     }
-
-    async Task<bool> RefreshBlobs()
-    {
-
-        _blobs = GetAllBlobsAsync().Result;
-
-        if (_blobs != null)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
 
     public AzureBlobCtrl(string containerName, string installationId)
     {
@@ -76,12 +60,6 @@ public partial class AzureBlobCtrl
 
     private async Task<string> ForcePublishAndRead(string fileName, string json)
     {
-        if (!IsValidJson(json)) // PR: Can be removed
-        {
-            LogError("Invalid updated Json is null");
-            return null;
-        }
-
         fileName = GetFileName(fileName);
         await DeleteBlobFileIfExist(fileName);
         await CreateAndUploadBlobFile(json, fileName);
@@ -100,49 +78,4 @@ public partial class AzureBlobCtrl
         await DeleteBlobFileIfExist(fileName);
         return await CreateAndUploadBlobFile(json, fileName, source: source);
     }
-
-    #region TDO
-
-    //public async Task<bool> UpDateAllFiles(DateOnly date)
-    //{
-    //    var yearsResult = new ConcurrentDictionary<DateOnly, string>();
-    //    var monthsResult = new ConcurrentDictionary<DateOnly, string>();
-    //    try
-    //    {
-    //        for (int year = date.Year; year >= date.Year - 2; year--)
-    //        {
-    //            for (int month = 1; month <= 12; month++)
-    //            {
-    //                var thisDatte = DateOnly.FromDateTime(new DateTime(date.Year, month, 1));
-    //                monthsResult.TryAdd(thisDatte, await UpDateDataPointFiles(thisDatte, FileType.Month));
-    //            }
-
-    //            yearsResult.TryAdd(date, await UpDateDataPointFiles(date, FileType.Year));
-    //        }
-
-    //        if (yearsResult.ToList().Any(res => res.Value != "null"))
-    //        {
-    //            LogError($"Some data points were not reachable");
-
-
-    //            var total = await UpDateDataPointFiles(date, FileType.Total);
-    //        }
-
-    //        return true;
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        LogError($"Error updating data: {ex.Message}");
-    //        return false;
-    //    }
-    //}
-
-    //public async Task<string> UpDateDataPointFiles(DateOnly date, FileType fileType)
-    //{
-    //    Title($"Update Production Data for {fileType}", ConsoleColor.Cyan);
-
-    //    return await FixFile(fileType, date);
-    //}
-
-    #endregion
 }

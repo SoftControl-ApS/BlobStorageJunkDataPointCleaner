@@ -8,7 +8,7 @@ namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
-        static CsvConfiguration csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+        static CsvConfiguration csvConfig = new (CultureInfo.InvariantCulture)
                                             {
                                                 Delimiter = ";",
                                                 HasHeaderRecord = true,
@@ -43,11 +43,11 @@ namespace SharedLibrary.Azure
                 csv.WriteField("TimeStamp");
                 var invs = production.Inverters;
                 invs.Reverse();
-                foreach (var inverter in invs)
+                foreach (var id in invs.Select(i => i.Id))
                 {
-                    csv.WriteField($"{inverter.Id} | in Joule");
-                    csv.WriteField($"{inverter.Id} | in kWh");
-                    csv.WriteField($"{inverter.Id} | in Wh");
+                    csv.WriteField($"{id} | in Joule");
+                    csv.WriteField($"{id} | in kWh");
+                    csv.WriteField($"{id} | in Wh");
                     csv.WriteField($"");
                     csv.WriteField($"");
                 }
@@ -114,29 +114,6 @@ namespace SharedLibrary.Azure
             Message("Finished: " + fileName);
             Message("With File Path: " + outputFilePath);
             return true;
-        }
-
-        private async Task AddJsonToSingularFileAsync(string fileName, string jsonContent)
-        {
-            int installationId = Convert.ToInt32(InstallationId);
-            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            string directoryPath = Path.Combine(desktopPath, $"{installationId}");
-            string outputFilePath = Path.Combine(directoryPath, $"{fileName}");
-
-            if (!Directory.Exists(directoryPath))
-            {
-                Directory.CreateDirectory(directoryPath);
-            }
-
-            if (File.Exists(outputFilePath))
-            {
-                File.Delete(outputFilePath);
-            }
-
-            using (var writer = new StreamWriter(outputFilePath, append: false))
-            {
-                await writer.WriteLineAsync($"{jsonContent}");
-            }
         }
     }
 }

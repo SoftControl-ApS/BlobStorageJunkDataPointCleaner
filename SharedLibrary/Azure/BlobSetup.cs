@@ -47,15 +47,7 @@ public partial class AzureBlobCtrl // PR: partial class sucks. Don't bother to c
         var blobFile = FetchedBlobsList.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
         if (blobFile == null)
         {
-            //if (blobFile == null && zip.Contains("pd"))
-            //{
-            //    await GenerateAndUploadEmptyDayFile(ExtractDateFromFileName(zip));
-            //    blobFile = blobs.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
-            //    return blobFile;
-            //}
-
             LogError($"Blob '{zip}' in installation '{InstallationId}' does not exist.");
-            FailedFiles.Add(new(zip, "GetBlockBlobReference() x2"));
         }
 
         return blobFile;

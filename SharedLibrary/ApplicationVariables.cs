@@ -7,7 +7,6 @@ namespace SharedLibrary
     {
         public static IConfiguration Configuration { get; }
         public static object locktotalFile { get; } = new();
-        public static List<Failed> FailedFiles = new();
         static ApplicationVariables()
         {
             var builder = new ConfigurationBuilder()
