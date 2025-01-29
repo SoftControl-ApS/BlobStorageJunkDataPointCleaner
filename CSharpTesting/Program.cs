@@ -1,5 +1,6 @@
 ﻿using SharedLibrary;
 using SharedLibrary.Azure;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using static SharedLibrary.util.Util;
@@ -8,7 +9,7 @@ namespace CSharpTesting;
 
 static class Program
 {
-    private static Dictionary<string, string> failedFiles = new();
+    private static ConcurrentDictionary<string, string> failedFiles = new();
 
     public static async Task Main(string[] args)
     {
@@ -62,7 +63,7 @@ static class Program
             }
             catch (Exception e)
             {
-                failedFiles.Add($"Exception{Guid.NewGuid()}", e.Message);
+                failedFiles.TryAdd($"Somewhere", e.Message);
             }
         });
 
