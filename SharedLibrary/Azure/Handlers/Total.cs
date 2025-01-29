@@ -78,12 +78,12 @@ public partial class AzureBlobCtrl
         var yearBlolbBlocks = GetAllBlobsAsync().Result
         .Where(blob =>
         blob.Name.Contains($"py")
-        && !blob.Name.Contains("BackUp")
+        && !blob.Name.Contains("_backup")
         ).ToList();
 
 
         var productions = new ConcurrentBag<ProductionDto>();
-        foreach (var yearblob in yearBlolbBlocks)
+        foreach (var yearblob in yearBlolbBlocks.Where(b => b != null).ToList())
         {
             string response = await ReadBlobFile(GetFileName(yearblob));
 

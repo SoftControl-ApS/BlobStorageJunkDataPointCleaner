@@ -10,7 +10,6 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using static Microsoft.WindowsAzure.Storage.CloudStorageAccount;
 using static SharedLibrary.ApplicationVariables;
-using SharedLibrary.SunSys;
 
 namespace SharedLibrary.Azure;
 
@@ -53,7 +52,7 @@ public partial class AzureBlobCtrl
 
         fileName = GetFileName(fileName);
 
-        string backupName = $"{fileName}_BackUp";
+        string backupName = $"{fileName}_backup";
         if (fileName.Contains("pd"))
         {
             var blolb = await GetBlockBlobReference(backupName);
@@ -61,12 +60,18 @@ public partial class AzureBlobCtrl
             {
                 if (!await blolb.ExistsAsync())
                 {
-                    await ForcePublish(backupName, originalJson, source: "PUBLISH");
+                    await CreateAndUploadBlobFile(originalJson, backupName, source: "PUBLISH");
+                }
+                else
+                {
+                    Log("backufile: " + backupName + " Was not found");
                 }
 
             }
-            catch (Exception)
-            { }
+            catch (Exception e )
+            {
+                await CreateAndUploadBlobFile(originalJson, backupName, source: "PUBLISH");
+            }
 
         }
         return await ForcePublish(fileName, updatedJson, source: "PUBLISH");

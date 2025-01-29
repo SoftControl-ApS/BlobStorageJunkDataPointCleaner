@@ -66,7 +66,7 @@ public partial class AzureBlobCtrl
         for (int month = 1; month <= 12; month++)
         {
             var filteredBlobs = allBlobs.Where(blob => blob.Name.Contains($"pd{date.Year}{month:D2}")
-                                                       && !blob.Name.ToLower().Contains($"backup")).ToList();
+                                                       && !blob.Name.ToLower().Contains($"_backup")).ToList();
             filteredBlobs = filteredBlobs.OrderBy(b => b.Name).ToList();
 
             tasks.Add(Task.Run(async () =>
