@@ -39,7 +39,7 @@ static class Program
             try
             {
                 var installationId = installationID.ToString();
-                Title($"Handling Installation {installationId}");
+                Log($"Handling Installation {installationId}");
 
                 var instance = new AzureBlobCtrl(containerName, installationId);
                 for (int i = date.Year; i >= 2014; i--)
