@@ -1,22 +1,7 @@
-﻿#pragma warning disable
-using System;
+#pragma warning disable
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Net.Http.Json;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Newtonsoft.Json;
-using SharedLibrary.Azure;
 using SharedLibrary.Models;
-using static System.Net.Mime.MediaTypeNames;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using static SharedLibrary.Azure.AzureBlobCtrl;
 using static SharedLibrary.util.Util;
 
 namespace SharedLibrary.Azure;
@@ -26,17 +11,14 @@ public partial class AzureBlobCtrl
     private ConcurrentDictionary<string, string> _editedFiles = new ConcurrentDictionary<string, string>();
     private string _ptJson = string.Empty;
     private ProductionDto _ptProductionDto;
-    public object ptFile { get; set; } = new object();
-
     public async Task LoadPT()
     {
         _ptJson = await ReadBlobFile("pt");
-
-        if (IsValidJson(_ptJson)) // PR: Can be removed
-        {
-            _ptProductionDto = ProductionDto.FromJson(_ptJson);
-        }
+        _ptProductionDto = ProductionDto.FromJson(_ptJson);
     }
+
+
+    private ConcurrentDictionary<string, string> updatedDaysFiles = new();
 
     public async Task<bool> CheckForExistingFiles(DateTime date)
     {
@@ -47,8 +29,28 @@ public partial class AzureBlobCtrl
         try
         {
             var blobs = (await GetAllBlobsAsync())
-                         .Where(blob => !blob.Name.Contains("BackUp"))
-                         .Where(blob => blob.Name.Contains($"pd{date.Year}") || blob.Name.Contains($"pm{date.Year}") || blob.Name.Contains($"py{date.Year}")).ToList();
+                        .Where(blob => blob.Name.Contains($"pd{date.Year}"))
+                        .ToList();
+
+            if (!blobs.Any())
+            {
+                Log($"No File found for this date {date.ToString()}");
+                await DeleteBlobFileIfExist(GetFileName(date, FileType.Year));
+                return false;
+            }
+            else
+            {
+                if (blobs.Count == 1)
+                {
+                    if (blobs.FirstOrDefault().Name.Contains($"py{date.Year}"))
+                    {
+                        Log($"No usefull File found for this date {date.ToString()}");
+
+                        await DeleteBlobFileIfExist(GetFileName(blobs.FirstOrDefault().Name));
+                        return false;
+                    }
+                }
+            }
 
             return blobs.Any();
         }
@@ -57,9 +59,41 @@ public partial class AzureBlobCtrl
             return false;
         }
     }
+    async Task<bool> CheckForDayFiles(DateOnly date)
+    {
+        var blobs = await GetAllBlobsAsync();
 
+        var yearDayBlobs = blobs.Where(x => x.Name.Contains($"pd{date.Year}")).ToList();
+
+        if (!yearDayBlobs.Any())
+        {
+            var blob = blobs.FirstOrDefault();
+            var res = await DeleteBlobFileIfExist(GetFileName(blob));
+            return false;
+        }
+
+        return true;
+    }
     public async Task<string> LetTheMagicHappen(DateOnly date)
     {
+
+        var duplicateResult = await DuplicateBlobFolder(ContainerName, InstallationId);
+        if (!duplicateResult)
+        {
+            LogError("Critical Error: Cannot duplicate this installation");
+            return null;
+        }
+
+        bool hasfile = await CheckForDayFiles(date);
+        if (!hasfile)
+        {
+            Log("Year" + date.Year + " Will not be handled");
+            return string.Empty;
+        }
+
+
+        await DeleteAllYearFilesExceptDays(date);
+
 
         var res = await CleanYear_AllDaysFiles(date);
         if (res)
@@ -70,71 +104,102 @@ public partial class AzureBlobCtrl
         {
             Log($"No cleaning needed {date.Year}");
         }
-        if (!_editedFiles.Any())
-        {
-            Log("No Updated needed");
-        }
-        else
-        {
-            Log($"Removed All junks Day DataPoints {date.ToString()}", ConsoleColor.DarkBlue);
-        }
 
-        //await DeleteAllYearFilesExceptDays(date);
-        //Log($"Deleted all yearFiles {date.Year}");
 
         await UpdatePDtoPM(date);
-        Log($"PD -> PM DONE {date.Year}");
 
+
+        Thread.Sleep(20*1000);
         await PMToYear(date);
         Log($"PM - > Year DONE {date.Year}");
-
+        
+        Thread.Sleep(20*1000);
+        
         return "success";
     }
 
     public async Task<bool> CleanYear_AllDaysFiles(DateOnly date)
     {
         var blobs = _blobs
-                    .OfType<CloudBlockBlob>() // PR: All blobs are CloudBlockBlob
                     .Where(blob => blob.Name.Contains($"pd{date.Year}"))
-                    .Where(blob => !blob.Name.ToLower().Contains("backup"))
+                    .Where(blob => !blob.Name.ToLower().Contains("_backup"))
                     .ToList();
 
+
         var tasks = blobs.Select(async blob =>
+        //foreach (var blob in blobs)
         {
             var fileName = GetFileName(blob.Name);
             var originalJson = await ReadBlobFile(fileName);
 
+            if (fileName.Contains("backup") || fileName.Contains("_backup"))
+                return;
+
+
+            List<Inverter> updatedInverters = new();
+
             if (originalJson != null)
             {
-                var productionDto = ProductionDto.FromJson(originalJson);
-                bool didChange = false;
-
-
-                foreach (var inv in productionDto.Inverters)
+                try
                 {
-                    foreach (var production in inv.Production)
+                    var originalProduction = ProductionDto.FromJson(originalJson);
+
+                    foreach (var inv in originalProduction.Inverters)
                     {
-                        if (production == null)
+                        foreach (var production in inv.Production)
                         {
-                            continue;
-                        }
+                            if (production == null)
+                            {
+                                continue;
+                            }
+                            else
+                            {
 
-                        if (production.Value >= ApplicationVariables.MaxEnergyInJoules)
-                        {
-                            Log($"{fileName}\t" +
-                                $"Inverter: {inv.Id}\t" +
-                                $"Value: {production.Value} date {production.TimeStamp.Value.ToString()}"
-                            );
+                                if ((production.Value <= 110000) && production.Value != 0)
+                                {
 
-                            production.Value = 0;
-                            didChange = true;
+                                }
+
+                                if (production.Value >= 110000)
+                                {
+                                    Log($"{fileName}\t" +
+                                        $"Inverter: {inv.Id}\t" +
+                                        $"Value: {production.Value} date {production.TimeStamp.Value.ToString()}"
+                                    );
+
+                                    production.Value = 0;
+                                    production.Quality = 1;
+                                }
+
+                              
+
+                                if (updatedInverters.Any(x => x.Id == inv.Id))
+                                {
+                                    updatedInverters.First(x => x.Id == inv.Id).Production.Add(production);
+                                }
+                                else
+                                {
+                                    updatedInverters.Add(
+                                        new Inverter()
+                                        {
+                                            Id = inv.Id,
+                                            Production = new List<DataPoint> { production }
+                                        });
+
+                                }
+                            }
                         }
                     }
-                }
+                    var updatedProduction = new ProductionDto()
+                    {
+                        TimeStamp = originalProduction.TimeStamp,
+                        TimeType = originalProduction.TimeType,
+                        Inverters = updatedInverters,
+                    };
 
-                if (didChange)
-                {
-                    var updatedJson = ProductionDto.ToJson(productionDto);
+
+
+                    var updatedJson = ProductionDto.ToJson(updatedProduction);
                     var result = await BackupAndReplaceOriginalFile(fileName, originalJson, updatedJson);
                     if (result)
                     {
@@ -143,56 +208,135 @@ public partial class AzureBlobCtrl
                     }
                     else
                         LogError("Could Not Update filename: " + fileName);
+
                 }
-            }
-            else
-            {
-                //GenerateAndUploadEmptyDayFile(fileName);
+                catch (Exception e)
+                {
+
+                }
             }
         });
 
-        await Task.WhenAll(tasks);
+        Task.WaitAll(tasks.ToArray());
+
+        if (!_editedFiles.Any())
+        {
+            Log("No Updated needed");
+        }
+        else
+        {
+            Log($"Removed All junks Day DataPoints {date.ToString()}", ConsoleColor.DarkBlue);
+        }
         return true;
     }
 
+    #region PD -> PM
     public async Task UpdatePDtoPM(DateOnly date)
     {
         // PD -> PM -> clouuudddd 🔥
         try
         {
             var yearDays = await GetYearDayFiles(date);
-            var monthsList = yearDays.OrderBy(x => x.Date).GroupBy(x => x.Date.Month).ToList();
 
-            var sw = new Stopwatch();
-            sw.Start();
+            var monthsDays = yearDays.OrderBy(x => x.Date).GroupBy(x => x.Date.Month).ToList();
 
-
-            foreach (var month in monthsList)
+            foreach (var month in monthsDays)
             {
                 var monthGroup = month.ToList();
                 var result = await ProcessInverterProductionAsync(monthGroup);
-                if (!IsValidJson(result)) // PR: Can be removed
+                if (result == null) // PR: Can be removed
                 {
                     LogError("Could Not Update PD");
                 }
             }
-
-            sw.Stop();
-            LogSuccess($"Retrieving all days files took {sw.ElapsedMilliseconds / 1000} Seconds");
         }
         catch (Exception e)
         {
             LogError(e);
         }
-
+        Log($"PD -> PM DONE {date.Year}");
     }
 
+    public async Task<string> ProcessInverterProductionAsync(List<MonthProductionDTO> month)
+    {
+        var inverters = await GetInverters();
+
+        foreach (var inverter in inverters)
+        {
+            var totalMonthProduction = 0.0;
+            DateTime? date = null;
+            List<DataPoint> productions = new List<DataPoint>();
+            foreach (var day in month)
+            {
+                var productionDay = ProductionDto.FromJson(day.DataJson);
+                var inverterProduction = productionDay.Inverters.Single(x => x.Id == inverter.Id);
+
+                if (inverterProduction != null)
+                {
+                    try
+                    {
+                        date = new DateTime(
+                                                new DateOnly(productionDay.TimeStamp.Value.Year,
+                                                productionDay.TimeStamp.Value.Month,
+                                                productionDay.TimeStamp.Value.Day),
+                                                TimeOnly.MinValue,
+                                                DateTimeKind.Utc
+                                            );
+
+                        productions.Add(new DataPoint
+                        {
+                            Quality = 1,
+                            TimeStamp = date,
+                            Value = inverterProduction.Production.Sum(x => (double)x.Value),
+                        });
+
+                        // Add total day production to the total month production
+                        totalMonthProduction += inverterProduction.Production.Sum(x => (double)x.Value);
+                    }
+                    catch (Exception e)
+                    {
+                        LogError(InstallationId + " ProcessInverterProductionAsync() -> " + e);
+                    }
+                }
+            }
+            inverter.Production = productions.Distinct().ToList();
+        }
+
+        var production = new ProductionDto
+        {
+            TimeType = (int)FileType.Month,
+            TimeStamp = inverters.First().Production.First().TimeStamp,
+            Inverters = inverters.ToList(),
+        };
+
+        var dsad = month.FirstOrDefault().Date;
+        try
+        {
+            var result = await UploadProduction(production, FileType.Month);
+
+            return result;
+        }
+        catch (Exception e)
+        {
+            LogError("Production Month could not be uploaded ¨\t" + InstallationId + "\tDate: " + month.First().Date.ToString());
+            return null;
+        }
+    }
+    #endregion
+
+    #region PM -> YEAR
     public async Task<string> PMToYear(DateOnly date)
     {
         try
         {
             // PM -> PY 🧸
             var yearMonthsFiles = await GetYear_MonthFilessAsync(date);
+
+            if (yearMonthsFiles == null)
+            {
+                var deleted = await DeleteBlobFileIfExist(GetFileName(date, FileType.Month));
+                return string.Empty;
+            }
 
             var inverters = await GetInverters();
 
@@ -215,15 +359,18 @@ public partial class AzureBlobCtrl
                                                     .Where(x => x.Id == inverter.Id)
                                                     .SelectMany(x => x.Production)
                                                     .Sum(x => (double)x.Value);
-                    var updatedDate = new DateOnly(production.TimeStamp.Value.Year, production.TimeStamp.Value.Month, production.TimeStamp.Value.Day);
+                    var updatedDate = new DateOnly(production.TimeStamp.Value.Year, production.TimeStamp.Value.Month,
+                        production.TimeStamp.Value.Day);
                     inverter.Production.Add(new DataPoint
                     {
                         Quality = 1,
-                        TimeStamp = new DateTime(updatedDate, TimeOnly.MinValue, DateTimeKind.Utc),
+                        TimeStamp = new DateTime(updatedDate, TimeOnly.MinValue,
+                                                    DateTimeKind.Utc),
 
                         Value = totalProduction,
                     });
                 }
+
                 inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
             }
 
@@ -231,11 +378,11 @@ public partial class AzureBlobCtrl
             {
                 Inverters = inverters.ToList(),
                 TimeType = (int)FileType.Year,
-                TimeStamp = new DateTime((new DateOnly(date.Year, 1, 1)), TimeOnly.MinValue, DateTimeKind.Utc),
+                TimeStamp = new DateTime((new DateOnly(date.Year, 1, 1)), TimeOnly.MinValue,
+                                         DateTimeKind.Utc),
             };
 
-            await ForcePublishAndRead($"py{date.Year}", ProductionDto.ToJson(productionYear));
-            var jsonYearResult = await ReadBlobFile($"py{date.Year}"); // PR: ReadBlobFile is returned from ForcePublishAndRead above
+            var jsonYearResult = await ForcePublishAndRead($"py{date.Year}", ProductionDto.ToJson(productionYear));
 
             return jsonYearResult;
         }
@@ -243,31 +390,72 @@ public partial class AzureBlobCtrl
         {
             LogError($"YearFailed : {date.Year}" + e.Message);
         }
+
         return null;
     }
 
+    private async Task<List<MonthProductionDTO>> GetYear_MonthFilessAsync(DateOnly date)
+    {
+        var allBlobs = await GetAllBlobsAsync();
+        if (allBlobs == null || !allBlobs.Any())
+            return null;
 
+
+        var yearFiles = allBlobs.Where(blob => blob.Name.Contains($"pm{date.Year:D4}")).ToList();
+
+        var tasks = new List<Task<MonthProductionDTO>>();
+        var monthsFiles = new List<MonthProductionDTO>();
+        foreach (var year in yearFiles)
+        {
+            string filename = GetFileName(year);
+            var productionDate = ExtractDateFromFileName(GetFileName(filename));
+
+            tasks.Add(ReadBlobFile(filename).ContinueWith(result =>
+            {
+                if (result.Result != null)
+                {
+
+                    var some = new MonthProductionDTO()
+                    {
+                        FileType = FileType.Year,
+                        Date = productionDate,
+                        DataJson = result.Result
+                    };
+                    return some;
+                }
+                return null;
+            }));
+        }
+
+        var results = await Task.WhenAll(tasks);
+        monthsFiles.AddRange(results);
+
+        return monthsFiles;
+    }
+    #endregion
+
+    #region Yeart -> PT
     public async Task<string> YearToPT(DateOnly date)
     {
         try
         {
             //PY -> PT -> clouuudddd 🔥
             var productions = await GetYearsAsync();
-            var inverters = ExtractInverters(
-                (ProductionDto.FromJson(await ReadBlobFile("pt"))).Inverters
-            );
+            var inverters = await GetInverters();
 
-            Parallel.ForEach(
-                inverters,
-                inverter =>
+            var a = false;
+
+
+            foreach (var inverter in inverters)
+            {
+                foreach (var production in productions)
                 {
-                    foreach (var production in productions)
-                    {
-                        double totalProduction = 0;
-                        var inv = production.Inverters.First(x => x.Id == inverter.Id);
-                        double sum = (double)inv.Production.Sum(x => x.Value);
-                        totalProduction += sum;
+                    double totalProduction = 0;
+                    var inv = production.Inverters.First(x => x.Id == inverter.Id);
+                    double sum = (double)inv.Production.Sum(x => x.Value);
+                    totalProduction += sum;
 
+                    if (totalProduction > 0)
                         inverter.Production.Add(
                             new DataPoint()
                             {
@@ -277,24 +465,28 @@ public partial class AzureBlobCtrl
                                 Value = totalProduction,
                             }
                         );
-                    }
-
-                    inverter.Production = inverter
-                                          .Production.OrderBy(x => x.TimeStamp)
-                                          .ToList();
                 }
-            );
+
+                inverter.Production = inverter
+                                      .Production.OrderBy(x => x.TimeStamp)
+                                      .ToList();
+            }
 
             var productionTotal = new ProductionDto()
             {
                 Inverters = inverters.ToList(),
                 TimeType = (int)FileType.Total,
-                TimeStamp = new DateTime((new DateOnly(2014, 1, 1)), TimeOnly.MinValue, DateTimeKind.Utc)
+                TimeStamp = new DateTime((new DateOnly(2014, 1, 1)), TimeOnly.MinValue,
+                                          DateTimeKind.Utc)
             };
 
             var res = string.Empty;
+            var productionJson = ProductionDto.ToJson(productionTotal);
+            res = await ForcePublishAndRead("pt", productionJson);
 
             res = await UploadProduction(productionTotal, FileType.Total);
+
+            Log($"Year -> PT DONE {date.Year}");
 
             return res;
         }
@@ -305,7 +497,7 @@ public partial class AzureBlobCtrl
 
         return null;
     }
-
+    #endregion
     public async Task<string> UploadProduction(ProductionDto production, FileType fileType)
     {
         string fileName = string.Empty;
@@ -362,207 +554,14 @@ public partial class AzureBlobCtrl
         return await ForcePublish(fileName, productionJson);
     }
 
-
-
-    // private async Task<string> HandleMonth_DaysFiles(List<MonthProductionDTO> month)
-    // {
-    //     var options = new ParallelOptions
-    //                   {
-    //                       MaxDegreeOfParallelism = 20
-    //                   };
-    //
-    //     var inverters = InitializeInverters(ProductionDto.FromJson(month.FirstOrDefault().DataJson).Inverters);
-    //
-    //     try
-    //     {
-    //         await Task.WhenAll(inverters.Select(async inverter =>
-    //         {
-    //             var totalMonthProduction = 0.0;
-    //
-    //             foreach (var day in month)
-    //             {
-    //                 var productionDay = ProductionDto.FromJson(day.DataJson);
-    //                 var inverterProduction = productionDay.Inverters.FirstOrDefault(x => x.Id == inverter.Id);
-    //
-    //                 if (inverterProduction != null)
-    //                 {
-    //                     totalMonthProduction += inverterProduction.Production.Sum(x => (double)x.Value);
-    //
-    //                     inverter.Production.Add(new DataPoint
-    //                                             {
-    //                                                 Quality = 1,
-    //                                                 TimeStamp = new DateTime(
-    //                                                     productionDay.TimeStamp.Value.Year,
-    //                                                     productionDay.TimeStamp.Value.Month,
-    //                                                     productionDay.TimeStamp.Value.Day
-    //                                                 ),
-    //                                                 Value = totalMonthProduction,
-    //                                             });
-    //                 }
-    //                 else
-    //                 {
-    //                 }
-    //             }
-    //
-    //             inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
-    //             Log(
-    //                 $"InvertId: {inverter.Id} \tproduced: {totalMonthProduction} \tDate: {inverter.Production[1].TimeStamp.Value.ToString()}");
-    //         }));
-    //     }
-    //     catch (Exception e)
-    //     {
-    //         LogError(e);
-    //     }
-    //
-    //     var production = new ProductionDto
-    //                      {
-    //                          TimeType = (int)FileType.Month,
-    //                          TimeStamp = inverters.First().Production.First().TimeStamp,
-    //                          Inverters = inverters.ToList(),
-    //                      };
-    //
-    //     var result = await UploadProduction(production, FileType.Month);
-    //
-    //     return IsValidJson(result) ? result : null;
-    // }
-    //
-
-    public async Task<string> ProcessInverterProductionAsync(List<MonthProductionDTO> month)
-    {
-        var inverters = await GetInverters();
-
-        foreach (var inverter in inverters)
-        {
-            var totalMonthProduction = 0.0;
-            DateTime? date = null;
-            List<DataPoint> productions = new List<DataPoint>();
-            foreach (var day in month)
-            {
-                var productionDay = ProductionDto.FromJson(day.DataJson);
-                var inverterProduction = productionDay.Inverters.FirstOrDefault(x => x.Id == inverter.Id);
-
-                if (inverterProduction != null)
-                {
-                    try
-                    {
-                        date = new DateTime(
-                                                new DateOnly(productionDay.TimeStamp.Value.Year,
-                                                productionDay.TimeStamp.Value.Month,
-                                                productionDay.TimeStamp.Value.Day),
-                                                TimeOnly.MinValue,
-                                                DateTimeKind.Utc
-                                            );
-
-                        productions.Add(new DataPoint
-                        {
-                            Quality = 1,
-                            TimeStamp = date,
-                            Value = inverterProduction.Production.Sum(x => (double)x.Value),
-                        });
-                        totalMonthProduction += inverterProduction.Production.Sum(x => (double)x.Value);
-                    }
-                    catch (Exception e)
-                    {
-                        LogError(InstallationId + " ProcessInverterProductionAsync() -> " + e);
-                    }
-                }
-            }
-            productions.Add(new DataPoint
-            {
-                Quality = 1,
-                TimeStamp = date,
-                Value = totalMonthProduction,
-            });
-
-            inverter.Production = productions;
-            inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
-            Log($"InvertId: {inverter.Id} \t" +
-                $"produced: {totalMonthProduction} \t" +
-                $"Date: {inverter.Production[1].TimeStamp.ToString()}");
-        }
-
-        var production = new ProductionDto
-        {
-            TimeType = (int)FileType.Month,
-            TimeStamp = inverters.First().Production.First().TimeStamp,
-            Inverters = inverters.ToList(),
-        };
-
-        var result = await UploadProduction(production, FileType.Month);
-        return IsValidJson(result) ? result : null;
-    }
-
-
-
-
-    //public async Task<string> ProcessInverterProductionAsync(List<MonthProductionDTO> month)
-    //{
-    //    var inverters = await GetInverters();
-
-    //    foreach (var inverter in inverters)
-    //    {
-    //        DateTime? date = null;
-    //        List<DataPoint> productions = new List<DataPoint>();
-    //        var totalMonthProduction = 0.0;
-    //        foreach (var day in month)
-    //        {
-    //            var productionDay = ProductionDto.FromJson(day.DataJson);
-    //            var inverterProduction = productionDay.Inverters.FirstOrDefault(x => x.Id == inverter.Id);
-
-    //            if (inverterProduction != null)
-    //            {
-    //                try
-    //                {
-    //                    date = new DateTime(
-    //                                            new DateOnly(productionDay.TimeStamp.Value.Year,
-    //                                            productionDay.TimeStamp.Value.Month,
-    //                                            productionDay.TimeStamp.Value.Day),
-    //                                            TimeOnly.MinValue,
-    //                                            DateTimeKind.Utc
-    //                                        );
-    //                    totalMonthProduction += inverterProduction.Production.Sum(x => (double)x.Value);
-
-    //                    productions.Add(new DataPoint
-    //                    {
-    //                        Quality = 1,
-    //                        TimeStamp = date,
-    //                        Value = totalMonthProduction,
-    //                    });
-    //                }
-    //                catch (Exception e)
-    //                {
-    //                    LogError(InstallationId + " ProcessInverterProductionAsync() -> " + e);
-    //                }
-    //            }
-    //        }
-
-    //        productions.Add(new DataPoint
-    //        {
-    //            Quality = 1,
-    //            TimeStamp = date,
-    //            Value = totalMonthProduction,
-    //        });
-
-    //        inverter.Production = productions;
-    //        inverter.Production = inverter.Production.OrderBy(x => x.TimeStamp).ToList();
-    //        Log($"InvertId: {inverter.Id} \t" +
-    //            $"produced: {totalMonthProduction} \t" +
-    //            $"Date: {inverter.Production[1].TimeStamp.ToString()}");
-    //    }
-
-
-    //    var result = await UploadProduction(production, FileType.Month);
-    //    return IsValidJson(result) ? result : null;
-    //}
-
-
-    async Task<bool> DeleteAllYearFilesExceptDays(DateOnly date, FileType fileType = FileType.Day)
+    async Task<bool> DeleteAllYearFilesExceptDays(DateOnly date)
     {
         var yearBlolbBlocks = GetAllBlobsAsync().Result
                               .Where(blob =>
-                                  blob.Name.Contains($"py{date.Year}") || blob.Name.Contains($"pm{date.Year}{date.Month}")
-                                  && !blob.Name.Contains("pd")
-                                  && !blob.Name.Contains("BackUp")
+                                  !blob.Name.Contains($"pd")
+                                  && !blob.Name.Contains("_backup")
+                                  && blob.Name.Contains($"py{date.Year}")
+                                  && blob.Name.Contains($"pm{date.Year}")
                               )
                               .ToList();
 

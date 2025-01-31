@@ -15,13 +15,13 @@ namespace SharedLibrary.Models
     using System.Globalization;
     internal static class Converter
     {
-        public static readonly JsonSerializerSettings Settings = new JsonSerializerSettings
-        {
-            //MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
-            //DateParseHandling = DateParseHandling.DateTimeOffset,
-            //MissingMemberHandling = MissingMemberHandling.Ignore,
-            NullValueHandling = NullValueHandling.Include
-        };
+        //public static readonly JsonSerializerSettings Settings = new JsonSerializerSettings
+        //{
+        //    //MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
+        //    DateParseHandling = DateParseHandling.DateTime,
+        //    //MissingMemberHandling = MissingMemberHandling.Ignore,
+        //    NullValueHandling = NullValueHandling.Include
+        //};
     }
 }
 

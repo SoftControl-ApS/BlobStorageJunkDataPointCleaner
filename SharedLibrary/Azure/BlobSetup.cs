@@ -6,7 +6,6 @@ using System.Linq;
 using static SharedLibrary.ApplicationVariables;
 using static SharedLibrary.util.Util;
 using static Microsoft.WindowsAzure.Storage.CloudStorageAccount;
-using SharedLibrary.SunSys;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Threading;
 using Microsoft.WindowsAzure.Storage.Blob.Protocol;
@@ -24,7 +23,6 @@ public partial class AzureBlobCtrl // PR: partial class sucks. Don't bother to c
 
     private async Task<List<CloudBlockBlob>> GetAllBlobsAsync(string containerName = "installations")
     {
-
         var snDir = GetContainerReference(containerName).GetDirectoryReference(InstallationId);
         BlobContinuationToken continuationToken = null;
 
@@ -47,15 +45,7 @@ public partial class AzureBlobCtrl // PR: partial class sucks. Don't bother to c
         var blobFile = FetchedBlobsList.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
         if (blobFile == null)
         {
-            //if (blobFile == null && zip.Contains("pd"))
-            //{
-            //    await GenerateAndUploadEmptyDayFile(ExtractDateFromFileName(zip));
-            //    blobFile = blobs.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
-            //    return blobFile;
-            //}
-
             LogError($"Blob '{zip}' in installation '{InstallationId}' does not exist.");
-            FailedFiles.Add(new(zip, "GetBlockBlobReference() x2"));
         }
 
         return blobFile;
