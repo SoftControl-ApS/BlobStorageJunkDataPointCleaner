@@ -7,6 +7,8 @@ namespace SharedLibrary
     {
         public static IConfiguration Configuration { get; }
         public static object locktotalFile { get; } = new();
+        public static List<Failed> FailedFiles = new();
+
         static ApplicationVariables()
         {
             var builder = new ConfigurationBuilder()
@@ -15,10 +17,6 @@ namespace SharedLibrary
 
             Configuration = builder.Build();
 
-
-            // Initialize static properties after Configuration is built
-            //AzureBlobConnectionName = Configuration["AzureBlob:ConnectionName"];
-            //AzureBlobConnectionKey = Configuration["AzureBlob:ConnectionKey"];
 
             AzureBlobConnectionName = "sundatatest";
             AzureBlobConnectionKey = "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";

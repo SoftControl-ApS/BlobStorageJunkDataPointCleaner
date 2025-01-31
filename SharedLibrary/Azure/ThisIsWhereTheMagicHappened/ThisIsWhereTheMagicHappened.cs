@@ -18,7 +18,6 @@ public partial class AzureBlobCtrl
     }
 
 
-    private ConcurrentDictionary<string, string> _editedFiles = new();
     private ConcurrentDictionary<string, string> updatedDaysFiles = new();
 
     public async Task<bool> CheckForExistingFiles(DateTime date)
@@ -331,7 +330,7 @@ public partial class AzureBlobCtrl
         try
         {
             // PM -> PY 🧸
-            var yearMonthsFiles = await GetYear_MonthFilesAsync(date);
+            var yearMonthsFiles = await GetYear_MonthFilessAsync(date);
 
             if (yearMonthsFiles == null)
             {
@@ -585,42 +584,6 @@ public partial class AzureBlobCtrl
 
         return true;
     }
-
-    public async Task<bool> CheckForExistingFiles(DateOnly date)
-    {
-        try
-        {
-            var blobs = (await GetAllBlobsAsync())
-                        .Where(blob => !blob.Name.ToLower().Contains("_backup"))
-                        .Where(blob =>
-                            blob.Name.Contains($"pd{date.Year}") || blob.Name.Contains($"pm{date.Year}") ||
-                            blob.Name.Contains($"py{date.Year}")).ToList();
-
-            if (!blobs.Any())
-            {
-                Log($"No File found for this date {date.ToString()}");
-                return false;
-            }
-            else
-            {
-                if (blobs.Count == 1)
-                {
-                    if (blobs.FirstOrDefault().Name.Contains($"py{date.Year}"))
-                    {
-                        await DeleteBlobFileIfExist(GetFileName(blobs.FirstOrDefault().Name));
-                        return false;
-                    }
-                }
-            }
-
-            return blobs.Any();
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
-    }
-
 }
 
 // private object GetMonthFile(DateTime requestDate)

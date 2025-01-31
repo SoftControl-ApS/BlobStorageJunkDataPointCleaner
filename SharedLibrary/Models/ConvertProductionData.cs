@@ -16,18 +16,21 @@ public partial class ProductionDto
 {
     public static ProductionDto FromJson(string json)
     {
-            // Replace NaN with null
-            json = json.Replace("NaN", "null");
+        // Replace NaN with null
+        if (json == null)
+            return null;
 
-            try
-            {
-                return JsonConvert.DeserializeObject<ProductionDto>(json);
-                //return JsonConvert.DeserializeObject<ProductionDto>(json, Converter.Settings);
-            }
-            catch (JsonReaderException ex)
-            {
-                LogError($"JSON Deserialization Error: {ex.Message}. JSON: {json}");
-            }
+        json = json.Replace("NaN", "null");
+
+        try
+        {
+            return JsonConvert.DeserializeObject<ProductionDto>(json);
+            //return JsonConvert.DeserializeObject<ProductionDto>(json, Converter.Settings);
+        }
+        catch (JsonReaderException ex)
+        {
+            LogError($"JSON Deserialization Error: {ex.Message}. JSON: {json}");
+        }
         return null;
     }
 
@@ -35,10 +38,10 @@ public partial class ProductionDto
     {
         try
         {
-                var prod = production;
-                prod.TimeStamp = production.Inverters.First().Production.First().TimeStamp;
-                //return JsonConvert.SerializeObject(production, Converter.Settings);
-                return JsonConvert.SerializeObject(production);
+            var prod = production;
+            prod.TimeStamp = production.Inverters.First().Production.First().TimeStamp;
+            //return JsonConvert.SerializeObject(production, Converter.Settings);
+            return JsonConvert.SerializeObject(production);
         }
         catch (Exception ex)
         {
