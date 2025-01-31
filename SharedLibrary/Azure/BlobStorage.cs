@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
@@ -28,8 +28,12 @@ public partial class AzureBlobCtrl
     {
         get
         {
-            if (_blobs != null)
-                return _blobs;
+            // PR: If this is true the it will recursively call itself until the stack overflows and the program crashes.
+            // Maybe just log the error and return null? Or limit the number of retries?
+            if (_blobs == null)
+            {
+                _blobs = GetAllBlobsAsync().Result;
+            }
 
             Console.WriteLine("Error retrieving fetched blobs");
             return new List<CloudBlockBlob>();
@@ -44,35 +48,25 @@ public partial class AzureBlobCtrl
 
     private async Task<bool> BackupAndReplaceOriginalFile(string fileName, string? originalJson, string updatedJson)
     {
-        if (updatedJson == null)
-        {
-            LogError("updated Json is null");
-            return false;
-        }
-
         fileName = GetFileName(fileName);
 
         string backupName = $"{fileName}_backup";
         if (fileName.Contains("pd"))
         {
-            var blolb = await GetBlockBlobReference(backupName);
+
             try
             {
-                if (!await blolb.ExistsAsync())
+                var res = await ReadBlobFile(fileName);
+                if (res == null)
                 {
-                    await CreateAndUploadBlobFile(originalJson, backupName, source: "PUBLISH");
+                    await ForcePublish($"{fileName}_backup", originalJson, source: "PUBLISH");
                 }
-                else
-                {
-                    Log("backufile: " + backupName + " Was not found");
-                }
-
             }
-            catch (Exception e )
+            catch (Exception e)
             {
-                await CreateAndUploadBlobFile(originalJson, backupName, source: "PUBLISH");
+                await ForcePublish($"{fileName}_backup", originalJson, source: "PUBLISH");
+                return true;
             }
-
         }
         return await ForcePublish(fileName, updatedJson, source: "PUBLISH");
     }
@@ -80,19 +74,23 @@ public partial class AzureBlobCtrl
     private async Task<string> ForcePublishAndRead(string fileName, string json)
     {
         fileName = GetFileName(fileName);
-        await DeleteBlobFileIfExist(fileName);
-        await CreateAndUploadBlobFile(json, fileName);
-        return await ReadBlobFile(fileName);
+        var deleted = await DeleteBlobFileIfExist(fileName);
+        var created = await CreateAndUploadBlobFile(json, fileName);
+
+        if (created)
+        {
+            return json;
+        }
+        else
+        {
+            LogError("Could Not UPLOAD FILE: " + fileName);
+            Console.ReadLine();
+            return null;
+        }
     }
 
     private async Task<bool> ForcePublish(string fileName, string json, string source = "PUBLISH")
     {
-        if (!IsValidJson(json))
-        {
-            LogError("Publish Failed: Invalid Json: " + json.ToString());
-            return false;
-        }
-
         fileName = GetFileName(fileName);
         await DeleteBlobFileIfExist(fileName);
         return await CreateAndUploadBlobFile(json, fileName, source: source);

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
@@ -66,7 +66,7 @@ public partial class AzureBlobCtrl
         for (int month = 1; month <= 12; month++)
         {
             var filteredBlobs = allBlobs.Where(blob => blob.Name.Contains($"pd{date.Year}{month:D2}")
-                                                       && !blob.Name.ToLower().Contains($"_backup")).ToList();
+            && !blob.Name.ToLower().Contains($"_backup")).ToList();
             filteredBlobs = filteredBlobs.OrderBy(b => b.Name).ToList();
 
             tasks.Add(Task.Run(async () =>
@@ -88,7 +88,8 @@ public partial class AzureBlobCtrl
         }
 
         await Task.WhenAll(tasks);
-        return dayFiles;
+        var result = new ConcurrentBag<MonthProductionDTO>(dayFiles.OrderByDescending(x => x.Date));
+        return result;
     }
 
     public static bool IsValidJson(string json)
@@ -101,8 +102,13 @@ public partial class AzureBlobCtrl
         {
             try
             {
-                JsonConvert.DeserializeObject<ProductionDto>(json, Converter.Settings);
-                return true;
+                var prod = JsonConvert.DeserializeObject<ProductionDto>(json);
+                //var prod = JsonConvert.DeserializeObject<ProductionDto>(json, Converter.Settings);
+
+                if (prod != null)
+                    return true;
+                else
+                    return false;
             }
             catch (Exception e)
             {

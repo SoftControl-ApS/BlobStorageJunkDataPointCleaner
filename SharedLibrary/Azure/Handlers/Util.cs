@@ -43,7 +43,7 @@ namespace SharedLibrary.Azure
                 return await InitInverters();
             }
 
-            return Inverters;
+            return ExtractInverters(Inverters);
         }
 
         async Task<ConcurrentBag<Inverter>> InitInverters()

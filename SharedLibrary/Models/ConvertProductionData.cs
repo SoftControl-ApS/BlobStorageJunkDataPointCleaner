@@ -21,7 +21,8 @@ public partial class ProductionDto
 
             try
             {
-                return JsonConvert.DeserializeObject<ProductionDto>(json, Converter.Settings);
+                return JsonConvert.DeserializeObject<ProductionDto>(json);
+                //return JsonConvert.DeserializeObject<ProductionDto>(json, Converter.Settings);
             }
             catch (JsonReaderException ex)
             {
@@ -36,7 +37,8 @@ public partial class ProductionDto
         {
                 var prod = production;
                 prod.TimeStamp = production.Inverters.First().Production.First().TimeStamp;
-                return JsonConvert.SerializeObject(production, Converter.Settings);
+                //return JsonConvert.SerializeObject(production, Converter.Settings);
+                return JsonConvert.SerializeObject(production);
         }
         catch (Exception ex)
         {
