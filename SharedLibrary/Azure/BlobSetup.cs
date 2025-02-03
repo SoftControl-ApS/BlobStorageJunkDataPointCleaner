@@ -17,32 +17,37 @@ public partial class AzureBlobCtrl // PR: partial class sucks. Don't bother to c
     public static CloudBlobClient CreateCloudBlobClient()
     {
         CloudStorageAccount storageAccount = Parse(AzureBlobConnectionString);
+        Log("new Client", ConsoleColor.Yellow);
+        Console.ResetColor();
         CloudBlobClient? blobClient = storageAccount.CreateCloudBlobClient();
         return blobClient;
     }
 
     private async Task<List<CloudBlockBlob>> GetAllBlobsAsync(string containerName = "installations")
     {
-        var snDir = GetContainerReference(containerName).GetDirectoryReference(InstallationId);
-        BlobContinuationToken continuationToken = null;
+        if (_installationDirectory == null)
+        {
+            _installationDirectory = GetContainerReference(containerName).GetDirectoryReference(InstallationId);
+        }
 
+        BlobContinuationToken? continuationToken = null;
         do
         {
-            var resultSegment = await snDir.ListBlobsSegmentedAsync(continuationToken);
+            var resultSegment = await _installationDirectory.ListBlobsSegmentedAsync(continuationToken);
             continuationToken = resultSegment.ContinuationToken;
 
             lock (lockblobs)
             {
-                _blobs = resultSegment.Results.OfType<CloudBlockBlob>().ToList(); 
+                _blobs = resultSegment.Results.OfType<CloudBlockBlob>().ToList();
             }
         } while (continuationToken != null);
 
-        return FetchedBlobsList;
+        return _blobs;
     }
 
-    public async Task<CloudBlockBlob> GetBlockBlobReference(string zip, string containerName = "installations")
+    public async Task<CloudBlockBlob> GetBlockBlobReference(string zip)
     {
-        var blobFile = FetchedBlobsList.FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
+        var blobFile = (await GetAllBlobsAsync()).FirstOrDefault(b => b.Name == $"{InstallationId}/{zip}");
         if (blobFile == null)
         {
             LogError($"Blob '{zip}' in installation '{InstallationId}' does not exist.");

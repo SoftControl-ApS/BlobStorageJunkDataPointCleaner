@@ -1,6 +1,7 @@
 #pragma warning disable
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Reflection.Metadata;
 using SharedLibrary.Models;
 using static SharedLibrary.util.Util;
 
@@ -22,20 +23,31 @@ public partial class AzureBlobCtrl
 
     public async Task<bool> CheckForExistingFiles(DateTime date)
     {
-        return await CheckForExistingFiles(DateOnly.FromDateTime(date));
-    }
-    public async Task<bool> CheckForExistingFiles(DateOnly date)
-    {
         try
         {
-            var blobs = (await GetAllBlobsAsync())
+            var alll = (await GetAllBlobsAsync());
+            var blobs = alll
+                        .Where(blob => blob != null)
                         .Where(blob => blob.Name.Contains($"pd{date.Year}"))
                         .ToList();
+
+            try
+            {
+                var pt = alll.Where(b => b.Name.Contains("pt")).First();
+                if (pt == null)
+                    throw new NullReferenceException();
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("No power total file found");
+                return false;
+            }
+
 
             if (!blobs.Any())
             {
                 Log($"No File found for this date {date.ToString()}");
-                await DeleteBlobFileIfExist(GetFileName(date, FileType.Year));
+                //await DeleteBlobFileIfExist(GetFileName(DateOnly.FromDateTime(date), FileType.Year));
                 return false;
             }
             else
@@ -59,12 +71,62 @@ public partial class AzureBlobCtrl
             return false;
         }
     }
+
+    public async Task<bool> SolvePy(DateTime date)
+    {
+        try
+        {
+
+            var inverters = await GetInverters();
+            if (inverters == null)
+            {
+                Console.WriteLine("No inverters found");
+                return false;
+            }
+            return true;
+            //var alll = (await GetAllBlobsAsync());
+            //var blobs = alll
+            //            .Where(blob => blob.Name.Contains($"rm")
+            //            || blob.Name.Contains($"rd"))
+            //            .ToList();
+
+
+            //if (blobs.Any())
+            //{
+            //    LogError("This is not a normal installation: Id : " + InstallationId);
+            //    return false;
+            //}
+            //else
+            //{
+            //    if (blobs.Count == 1)
+            //    {
+            //        if (blobs.FirstOrDefault().Name.Contains($"py{date.Year}"))
+            //        {
+            //            Log($"No usefull File found for this date {date.ToString()}");
+
+            //            await DeleteBlobFileIfExist(GetFileName(blobs.FirstOrDefault().Name));
+            //            return false;
+            //        }
+            //    }
+            //}
+
+            //return blobs.Any();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Installation with custoemrs not supported");
+
+            return false;
+        }
+    }
     async Task<bool> CheckForDayFiles(DateOnly date)
     {
         var blobs = await GetAllBlobsAsync();
 
         var yearDayBlobs = blobs.Where(x => x.Name.Contains($"pd{date.Year}")).ToList();
 
+        if (date.Year == 2016)
+            Console.WriteLine();
         if (!yearDayBlobs.Any())
         {
             var blob = blobs.FirstOrDefault();
@@ -77,12 +139,12 @@ public partial class AzureBlobCtrl
     public async Task<string> LetTheMagicHappen(DateOnly date)
     {
 
-        var duplicateResult = await DuplicateBlobFolder(ContainerName, InstallationId);
-        if (!duplicateResult)
-        {
-            LogError("Critical Error: Cannot duplicate this installation");
-            return null;
-        }
+        //var duplicateResult = await DuplicateBlobFolder(ContainerName, InstallationId);
+        //if (!duplicateResult)
+        //{
+        //    LogError("Critical Error: Cannot duplicate this installation");
+        //    return null;
+        //}
 
         bool hasfile = await CheckForDayFiles(date);
         if (!hasfile)
@@ -90,10 +152,12 @@ public partial class AzureBlobCtrl
             Log("Year" + date.Year + " Will not be handled");
             return string.Empty;
         }
-
+        else
+        {
+            LogSuccess("Year" + date.Year + " Will be handled");
+        }
 
         await DeleteAllYearFilesExceptDays(date);
-
 
         var res = await CleanYear_AllDaysFiles(date);
         if (res)
@@ -109,12 +173,12 @@ public partial class AzureBlobCtrl
         await UpdatePDtoPM(date);
 
 
-        Thread.Sleep(20*1000);
+        Thread.Sleep(20 * 1000);
         await PMToYear(date);
         Log($"PM - > Year DONE {date.Year}");
-        
-        Thread.Sleep(20*1000);
-        
+
+        Thread.Sleep(20 * 1000);
+
         return "success";
     }
 
@@ -171,7 +235,7 @@ public partial class AzureBlobCtrl
                                     production.Quality = 1;
                                 }
 
-                              
+
 
                                 if (updatedInverters.Any(x => x.Id == inv.Id))
                                 {
@@ -243,11 +307,12 @@ public partial class AzureBlobCtrl
             foreach (var month in monthsDays)
             {
                 var monthGroup = month.ToList();
-                var result = await ProcessInverterProductionAsync(monthGroup);
-                if (result == null) // PR: Can be removed
+                var d = monthGroup.FirstOrDefault().Date;
+                if (d.Month == 2 && d.Year == 2025)
                 {
-                    LogError("Could Not Update PD");
+                    continue;
                 }
+                var result = await ProcessInverterProductionAsync(monthGroup);
             }
         }
         catch (Exception e)
@@ -557,11 +622,8 @@ public partial class AzureBlobCtrl
     async Task<bool> DeleteAllYearFilesExceptDays(DateOnly date)
     {
         var yearBlolbBlocks = GetAllBlobsAsync().Result
-                              .Where(blob =>
-                                  !blob.Name.Contains($"pd")
-                                  && !blob.Name.Contains("_backup")
-                                  && blob.Name.Contains($"py{date.Year}")
-                                  && blob.Name.Contains($"pm{date.Year}")
+                              .Where(blob => blob.Name.Contains($"py{date.Year}")
+                              && blob.Name.Contains($"pm{date.Year}")
                               )
                               .ToList();
 

@@ -80,7 +80,7 @@ namespace SharedLibrary.Azure
 
             string json = "null";
 
-            CloudBlockBlob blobFile = await GetBlockBlobReference(zipFileName, sn);
+            CloudBlockBlob blobFile = await GetBlockBlobReference(zipFileName);
             if (blobFile != null)
             {
                 using (var zipStream = new MemoryStream())
@@ -119,7 +119,7 @@ namespace SharedLibrary.Azure
         {
             sn = ValidateFileName(fileName, sn);
 
-            CloudBlockBlob blobFile = await GetBlockBlobReference($"{fileName}.zip", sn);
+            CloudBlockBlob blobFile = await GetBlockBlobReference($"{fileName}.zip");
 
             using (MemoryStream ms = new MemoryStream(UTF8Encoding.UTF8.GetBytes(json)))
             {

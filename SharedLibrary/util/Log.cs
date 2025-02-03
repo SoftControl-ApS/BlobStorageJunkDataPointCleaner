@@ -9,17 +9,18 @@ namespace SharedLibrary.util
 {
     public static partial class Util
     {
+        static string GetDate => DateTime.Now.ToString() + ": ";
         public static void Log(string title, ConsoleColor color = ConsoleColor.Cyan)
         {
             Console.ForegroundColor = color;
-            Console.WriteLine(title);
+            Console.WriteLine("Log " + GetDate + title);
             Console.ResetColor();
         }
 
         public static void LogSuccess(string title, ConsoleColor color = ConsoleColor.Green)
         {
             Console.ForegroundColor = color;
-            Console.WriteLine(title);
+            Console.WriteLine("Success " + GetDate + title);
             Console.ResetColor();
         }
 
@@ -27,28 +28,26 @@ namespace SharedLibrary.util
         {
             var banner = FiggleFonts.Standard.Render(title);
             Console.ForegroundColor = color;
-            Console.WriteLine(banner);
+            Console.WriteLine(GetDate + banner);
             Console.ResetColor();
         }
 
         public static void LogError(string title, ConsoleColor color = ConsoleColor.Red)
         {
             Console.ForegroundColor = color;
-            Console.WriteLine(title);
+            Console.WriteLine("Error " + GetDate + title);
             Console.ResetColor();
         }
 
-        public static void LogError(Exception ex, ConsoleColor color = ConsoleColor.Red)
+        public static void LogError(Exception ex)
         {
-            Console.ForegroundColor = color;
-            Console.WriteLine(ex.Message);
-            Console.ResetColor();
+            LogError(ex.Message);
         }
 
         public static void Message(string message)
         {
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.WriteLine(message);
+            Console.WriteLine("Message " + GetDate + message);
             Console.ResetColor();
         }
     }

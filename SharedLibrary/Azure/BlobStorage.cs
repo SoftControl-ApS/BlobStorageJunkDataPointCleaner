@@ -24,21 +24,7 @@ public partial class AzureBlobCtrl
     List<CloudBlockBlob> _blobs = null;
     object lockblobs { get; } = new object();
 
-    List<CloudBlockBlob> FetchedBlobsList
-    {
-        get
-        {
-            // PR: If this is true the it will recursively call itself until the stack overflows and the program crashes.
-            // Maybe just log the error and return null? Or limit the number of retries?
-            if (_blobs == null)
-            {
-                _blobs = GetAllBlobsAsync().Result;
-            }
-
-            Console.WriteLine("Error retrieving fetched blobs");
-            return new List<CloudBlockBlob>();
-        }
-    }
+    CloudBlobDirectory _installationDirectory = null;
 
     public AzureBlobCtrl(string containerName, string installationId)
     {
