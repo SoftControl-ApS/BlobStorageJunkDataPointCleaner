@@ -9,50 +9,21 @@ namespace SharedLibrary.Azure
 {
     public partial class AzureBlobCtrl
     {
-        private ConcurrentBag<Inverter> _inverters = new ConcurrentBag<Inverter>();
-
-        private ConcurrentBag<Inverter> Inverters
-        {
-            get => _inverters;
-        }
-
-        private static async Task<ConcurrentBag<Inverter>> ExtractInverters(ProductionDto production)
-        {
-            var inverters = new ConcurrentBag<Inverter>(production.Inverters);
-            return await Task.FromResult(inverters);
-        }
-
         private ConcurrentBag<Inverter> ExtractInverters(IEnumerable<Inverter> inverters)
         {
             var updatedInverters = new ConcurrentBag<Inverter>();
-            Parallel.ForEach(inverters, inverter =>
+            foreach (var inverter in inverters)
             {
                 updatedInverters.Add(new Inverter
                                      {
                                          Id = inverter.Id,
                                          Production = new List<DataPoint>(),
                                      });
-            });
+            }
+
             return updatedInverters;
         }
 
-        private async Task<ConcurrentBag<Inverter>> GetInverters()
-        {
-            if (!Inverters.Any())
-            {
-                return await InitInverters();
-            }
-
-            return ExtractInverters(Inverters);
-        }
-
-        async Task<ConcurrentBag<Inverter>> InitInverters()
-        {
-            var production = ProductionDto.FromJson(await ReadBlobFile("pt"));
-            var invs = await ExtractInverters(production);
-            this._inverters = invs;
-            return _inverters;
-        }
         private static int ExtractYearFromFileName(string fileName)
         {
             if (fileName.Length < 6)
@@ -85,12 +56,14 @@ namespace SharedLibrary.Azure
             return Convert.ToInt32(fileName.Substring(8, 2));
         }
 
-        private DateOnly ExtractDateFromFileName(string fileName)
+        public static DateOnly ExtractDateFromFileName(string fileName)
         {
             int year = ExtractYearFromFileName(fileName);
-            int month = ExtractMonthFromFileName(fileName);
+            int month = 01;
+            if (fileName.Length >= 8)
+                month = ExtractMonthFromFileName(fileName);
             int day = 01;
-            if (fileName.Length > 8)
+            if (fileName.Length >= 10)
                 day = ExtractDayFromFileName(fileName);
 
             DateOnly date = new DateOnly(year, month, day);

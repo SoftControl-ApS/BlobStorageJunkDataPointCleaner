@@ -3,7 +3,7 @@ namespace SharedLibrary.Models;
 public partial class DataPoint
 {
     [JsonProperty("timeStamp", NullValueHandling = NullValueHandling.Ignore)]
-    public DateTimeOffset? TimeStamp { get; set; }
+    public DateTime? TimeStamp { get; set; }
 
     [JsonProperty("value", NullValueHandling = NullValueHandling.Ignore)]
     [JsonConverter(typeof(ZeroIfNullOrNaNConverter))]
@@ -43,4 +43,5 @@ public class ZeroIfNullOrNaNConverter : JsonConverter<double?>
 
         return 0;
     }
+    
 }

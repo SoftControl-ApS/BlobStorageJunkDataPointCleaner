@@ -14,9 +14,7 @@ namespace SharedLibrary.util
         {
             if (obj == null)
                 throw new ArgumentNullException(nameof(obj));
-
-            // Serialize to JSON and then deserialize back to a new object
-            return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(obj));
+            return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(obj,Newtonsoft.Json.Formatting.Indented));
         }
     }
 }

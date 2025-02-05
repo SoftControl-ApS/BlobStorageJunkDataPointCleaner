@@ -1,4 +1,4 @@
-﻿using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.Collections.Concurrent;
@@ -19,10 +19,10 @@ namespace SharedLibrary.Azure
         #region Create
 
         public async Task<bool> CreateAndUploadBlobFile(string jsonContent, string fileName,
-                                                        string containerName = "installations", string source = "")
+                                                        string containerName = "installations", bool isPd = false)
         {
             string zipFileName = $"{fileName}.zip";
-            CloudBlobContainer container = GetContainerReference(containerName);
+            CloudBlobContainer container = InstallationContainerReference;
             CloudBlockBlob blobFile = container.GetBlockBlobReference($"{InstallationId}/{zipFileName}");
 
             using (MemoryStream compressedStream = new MemoryStream())
@@ -42,7 +42,7 @@ namespace SharedLibrary.Azure
                 await blobFile.UploadFromStreamAsync(compressedStream);
             }
 
-            if (source != "PUBLISH")
+            if (isPd)
             {
                 Log($"{fileName} - {InstallationId} production object was created", ConsoleColor.Yellow);
             }
@@ -54,19 +54,13 @@ namespace SharedLibrary.Azure
 
         #region Read
 
-        public async Task<string> ReadBlobFile(string fileName)
+        public async Task<string?> ReadBlobFile(string fileName)
         {
             var json = await ReadBlobFile($"{fileName}.json", $"{fileName}.zip", InstallationId);
-
-            if (!IsValidJson(json)) // PR: Can be removed
-            {
-                LogError($"READ: Invalid Json- {fileName} response {json}");
-                return null;
-            }
             return json;
         }
 
-        public async Task<string> ReadBlobFile(string jsonFileName, string zipFileName, string? sn)
+        public async Task<string?> ReadBlobFile(string jsonFileName, string zipFileName, string? sn)
         {
             if (string.IsNullOrEmpty(sn) && !string.IsNullOrEmpty(InstallationId))
                 sn = InstallationId;
@@ -78,7 +72,7 @@ namespace SharedLibrary.Azure
             if (!jsonFileName.EndsWith(".json"))
                 LogError("file name must end with .json");
 
-            string json = "null";
+            string? json = null;
 
             CloudBlockBlob blobFile = await GetBlockBlobReference(zipFileName);
             if (blobFile != null)
@@ -106,9 +100,9 @@ namespace SharedLibrary.Azure
                 }
 
                 return json;
-
             }
-            return null;
+
+            return json;
         }
 
         #endregion
@@ -149,24 +143,24 @@ namespace SharedLibrary.Azure
 
         #region Delete
 
-        public async Task<bool> DeleteBlobFileIfExist(string zip, string containerName = "installations")
+        public async Task<bool> DeleteBlobFileIfExist(string zip)
         {
             if (!zip.EndsWith(".zip"))
                 zip = zip.Trim() + ".zip";
 
-            CloudBlobContainer container = GetContainerReference(containerName);
+            CloudBlobContainer container = InstallationContainerReference;
             var blobFile = container.GetBlockBlobReference($"{InstallationId}/{zip}");
             var result = await blobFile.DeleteIfExistsAsync();
             return result;
         }
-        public async Task<bool> DeleteBlobFile(string zip, string containerName = "installations")
+        public async Task<bool> DeleteBlobFile(string zip)
         {
             if (!zip.EndsWith(".zip"))
                 zip = zip.Trim() + ".zip";
 
             try
             {
-                CloudBlobContainer container = GetContainerReference(containerName);
+                CloudBlobContainer container = InstallationContainerReference;
                 var blobFile = container.GetBlockBlobReference($"{InstallationId}/{zip}");
                 var result = await blobFile.DeleteIfExistsAsync();
 
@@ -186,13 +180,14 @@ namespace SharedLibrary.Azure
         }
 
         #endregion
-        #region Duplicate 
+
+        #region Duplicate
 
         private async Task<bool> DuplicateBlobFolder(string containerName, string folderName)
         {
             try
             {
-                CloudBlobContainer container = GetContainerReference(containerName);
+                CloudBlobContainer container = InstallationContainerReference;
                 if (!await container.ExistsAsync())
                 {
                     LogError($"Container '{containerName}' does not exist.");
@@ -200,7 +195,7 @@ namespace SharedLibrary.Azure
                 }
 
                 // Generate the backup folder name
-                string backupFolderName = $"{folderName}_Backup_{DateTime.Now:yyyyMMdd}";
+                string backupFolderName = $"{folderName}_Backup_{DateTime.Now:yyyyMMddHHmmSS}";
 
                 // List all blobs in the folder
                 BlobContinuationToken continuationToken = null;
@@ -208,7 +203,8 @@ namespace SharedLibrary.Azure
 
                 do
                 {
-                    var resultSegment = await container.ListBlobsSegmentedAsync(folderName + "/", true, BlobListingDetails.None, null, continuationToken, null, null);
+                    var resultSegment = await container.ListBlobsSegmentedAsync(folderName + "/", true,
+                        BlobListingDetails.None, null, continuationToken, null, null);
                     continuationToken = resultSegment.ContinuationToken;
                     blobsToCopy.AddRange(resultSegment.Results);
                 } while (continuationToken != null);
@@ -218,14 +214,11 @@ namespace SharedLibrary.Azure
                 {
                     if (blobItem is CloudBlockBlob sourceBlob)
                     {
-                        // Generate the destination blob name
-                        string relativePath = sourceBlob.Name.Substring(folderName.Length + 1); // Remove the folder prefix
-                        string destinationBlobName = $"{DateOnly.FromDateTime(DateTime.Now)}_BackUp/{folderName}/{relativePath}";
-
-                        // Get a reference to the destination blob
+                        string relativePath =
+                            sourceBlob.Name.Substring(folderName.Length + 1); // Remove the folder prefix
+                        string destinationBlobName =
+                            $"{DateOnly.FromDateTime(DateTime.Now)}_BackUp/{folderName}/{relativePath}";
                         CloudBlockBlob destinationBlob = container.GetBlockBlobReference(destinationBlobName);
-
-                        // Start the copy operation
                         await destinationBlob.StartCopyAsync(sourceBlob.Uri);
                     }
                 }
@@ -239,6 +232,7 @@ namespace SharedLibrary.Azure
                 return false;
             }
         }
+
         #endregion
     }
 }

@@ -17,7 +17,7 @@ public partial class AzureBlobCtrl // PR: partial class sucks. Don't bother to c
     public static CloudBlobClient CreateCloudBlobClient()
     {
         CloudStorageAccount storageAccount = Parse(AzureBlobConnectionString);
-        Log("new Client", ConsoleColor.Yellow);
+        //Log("new Client", ConsoleColor.Yellow);
         Console.ResetColor();
         CloudBlobClient? blobClient = storageAccount.CreateCloudBlobClient();
         return blobClient;
@@ -25,15 +25,13 @@ public partial class AzureBlobCtrl // PR: partial class sucks. Don't bother to c
 
     private async Task<List<CloudBlockBlob>> GetAllBlobsAsync(string containerName = "installations")
     {
-        if (_installationDirectory == null)
-        {
-            _installationDirectory = GetContainerReference(containerName).GetDirectoryReference(InstallationId);
-        }
+        // _installationDirectory = GetContainerReference(containerName).GetDirectoryReference(InstallationId);
+        var cloudBlobDirectory = InstallationContainerReference.GetDirectoryReference(InstallationId);
 
         BlobContinuationToken? continuationToken = null;
         do
         {
-            var resultSegment = await _installationDirectory.ListBlobsSegmentedAsync(continuationToken);
+            var resultSegment = await cloudBlobDirectory.ListBlobsSegmentedAsync(continuationToken);
             continuationToken = resultSegment.ContinuationToken;
 
             lock (lockblobs)
@@ -56,16 +54,40 @@ public partial class AzureBlobCtrl // PR: partial class sucks. Don't bother to c
         return blobFile;
     }
 
-    public CloudBlobContainer GetContainerReference(string containerName = "installations")
+    // public CloudBlobContainer GetContainerReference(string containerName = "installations")
+    // {
+    //     var blobClient = CreateCloudBlobClient();
+    //     CloudBlobContainer rootContainer = blobClient.GetContainerReference(containerName);
+    //     rootContainer.SetPermissionsAsync(
+    //         new BlobContainerPermissions()
+    //         {
+    //             PublicAccess = BlobContainerPublicAccessType.Blob
+    //         }
+    //     );
+    //     return rootContainer;
+    // }
+    private CloudBlobContainer _cloudBlobContainer = null;
+
+    public CloudBlobContainer InstallationContainerReference
     {
-        var blobClient = CreateCloudBlobClient();
-        CloudBlobContainer rootContainer = blobClient.GetContainerReference(containerName);
-        rootContainer.SetPermissionsAsync(
-            new BlobContainerPermissions()
+        get
+        {
+            if (_cloudBlobContainer == null)
             {
-                PublicAccess = BlobContainerPublicAccessType.Blob
+                var blobClient = CreateCloudBlobClient();
+                _cloudBlobContainer = blobClient.GetContainerReference("installations");
+                _cloudBlobContainer.SetPermissionsAsync(
+                    new BlobContainerPermissions()
+                    {
+                        PublicAccess = BlobContainerPublicAccessType.Blob
+                    }
+                );
+                return _cloudBlobContainer;
             }
-        );
-        return rootContainer;
+            else
+            {
+                return _cloudBlobContainer;
+            }
+        }
     }
 }

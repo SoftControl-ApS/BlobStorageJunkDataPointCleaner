@@ -39,33 +39,56 @@ public partial class AzureBlobCtrl
         string backupName = $"{fileName}_backup";
         if (fileName.Contains("pd"))
         {
-
             try
             {
-                var res = await ReadBlobFile(fileName);
-                if (res == null)
+                if (!await BlobExistsAsync(backupName))
                 {
-                    await ForcePublish($"{fileName}_backup", originalJson, source: "PUBLISH");
+                    await ForcePublish($"{backupName}", originalJson, isPd: true);
                 }
             }
             catch (Exception e)
             {
-                await ForcePublish($"{fileName}_backup", originalJson, source: "PUBLISH");
+                await ForcePublish($"{backupName}", originalJson, isPd: true);
                 return true;
             }
         }
-        return await ForcePublish(fileName, updatedJson, source: "PUBLISH");
+
+        return await ForcePublish(fileName, updatedJson);
     }
+
+
+    private async Task<bool> BlobExistsAsync(string blobName)
+    {
+        var blob = _cloudBlobContainer.GetBlockBlobReference(blobName);
+        try
+        {
+            if (blob != null)
+                return await blob.ExistsAsync();
+            return false;
+        }
+        catch (Exception e)
+        {
+            // Noncompliant: is the block empty on purpose, or is code missing?
+        }
+
+        return false;
+    }
+
 
     private async Task<string> ForcePublishAndRead(string fileName, string json)
     {
         fileName = GetFileName(fileName);
-        var deleted = await DeleteBlobFileIfExist(fileName);
+        if (await BlobExistsAsync(fileName))
+        {
+            var deleted = await DeleteBlobFile(fileName);
+        }
+
         var created = await CreateAndUploadBlobFile(json, fileName);
 
         if (created)
         {
-            return json;
+            var read = await ReadBlobFile(fileName);
+            return read;
         }
         else
         {
@@ -75,10 +98,13 @@ public partial class AzureBlobCtrl
         }
     }
 
-    private async Task<bool> ForcePublish(string fileName, string json, string source = "PUBLISH")
+    private async Task<bool> ForcePublish(string fileName, string json, bool isPd = false)
     {
         fileName = GetFileName(fileName);
-        await DeleteBlobFileIfExist(fileName);
-        return await CreateAndUploadBlobFile(json, fileName, source: source);
+        if (await BlobExistsAsync(fileName))
+        {
+            var deleted = await DeleteBlobFile(fileName);
+        }
+        return await CreateAndUploadBlobFile(json, fileName, isPd: isPd);
     }
 }

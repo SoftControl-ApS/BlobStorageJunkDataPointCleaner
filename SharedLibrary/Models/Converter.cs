@@ -22,6 +22,10 @@ namespace SharedLibrary.Models
         //    //MissingMemberHandling = MissingMemberHandling.Ignore,
         //    NullValueHandling = NullValueHandling.Include
         //};
+        // public static readonly JsonSerializerSettings Settings  = new JsonSerializerSettings
+        //                                                            {
+        //                                                                DateTimeZoneHandling = DateTimeZoneHandling.Unspecified
+        //                                                            };
     }
 }
 

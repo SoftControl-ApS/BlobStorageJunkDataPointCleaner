@@ -1,54 +1,83 @@
 ﻿using Figgle;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+    using System;
+    using System.IO;
 
-namespace SharedLibrary.util
-{
-    public static partial class Util
+    namespace SharedLibrary.util
     {
-        static string GetDate => DateTime.Now.ToString() + ": ";
-        public static void Log(string title, ConsoleColor color = ConsoleColor.Cyan)
+        public static partial class Util
         {
-            Console.ForegroundColor = color;
-            Console.WriteLine("Log " + GetDate + title);
-            Console.ResetColor();
-        }
+            static string GetDate => DateTime.Now.ToString() + ": ";
 
-        public static void LogSuccess(string title, ConsoleColor color = ConsoleColor.Green)
-        {
-            Console.ForegroundColor = color;
-            Console.WriteLine("Success " + GetDate + title);
-            Console.ResetColor();
-        }
+            private static void WriteToFile(string message)
+            {
+                using (StreamWriter writer = new StreamWriter(ApplicationVariables.LogFilePath, true))
+                {
+                    writer.WriteLine(message);
+                }
+            }
 
-        public static void Title(string title, ConsoleColor color = ConsoleColor.Magenta)
-        {
-            var banner = FiggleFonts.Standard.Render(title);
-            Console.ForegroundColor = color;
-            Console.WriteLine(GetDate + banner);
-            Console.ResetColor();
-        }
+            public static void Log(string title, ConsoleColor color = ConsoleColor.Cyan)
+            {
+                string message = "Log " + GetDate + title;
+                Console.ForegroundColor = color;
+                Console.WriteLine(message);
+                Console.ResetColor();
+                WriteToFile("\tLog : ______________\n");
+                WriteToFile(message);
+                WriteToFile("\n______________\n");
 
-        public static void LogError(string title, ConsoleColor color = ConsoleColor.Red)
-        {
-            Console.ForegroundColor = color;
-            Console.WriteLine("Error " + GetDate + title);
-            Console.ResetColor();
-        }
+            }
 
-        public static void LogError(Exception ex)
-        {
-            LogError(ex.Message);
-        }
+            public static void LogSuccess(string title, ConsoleColor color = ConsoleColor.Green)
+            {
+                string message = "Success " + GetDate + title;
+                Console.ForegroundColor = color;
+                Console.WriteLine(message);
+                Console.ResetColor();
+                WriteToFile("\tSuccess: ______________\n");
+                WriteToFile(message);
+                WriteToFile("\n______________\n");
 
-        public static void Message(string message)
-        {
-            Console.ForegroundColor = ConsoleColor.Gray;
-            Console.WriteLine("Message " + GetDate + message);
-            Console.ResetColor();
+            }
+
+            public static void Title(string title, ConsoleColor color = ConsoleColor.Magenta)
+            {
+                var banner = FiggleFonts.Standard.Render(title);
+                string message = GetDate + banner;
+                Console.ForegroundColor = color;
+                Console.WriteLine(message);
+                Console.ResetColor();
+                WriteToFile("\tTitle :______________\n");
+                WriteToFile(message);                
+                WriteToFile("\n______________\n");
+
+            }
+
+            public static void LogError(string title, ConsoleColor color = ConsoleColor.Red)
+            {
+                string message = "Error " + GetDate + title;
+                Console.ForegroundColor = color;
+                Console.WriteLine(message);
+                Console.ResetColor();
+                WriteToFile("\tException :______________\n");
+                WriteToFile(message);
+                WriteToFile("\n______________\n");
+            }
+
+            public static void LogError(Exception ex)
+            {
+                LogError(ex.Message);
+            }
+
+            public static void Message(string message)
+            {
+                string logMessage = "Message " + GetDate + message;
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.WriteLine(logMessage);
+                Console.ResetColor();
+                WriteToFile("\tMessage : ______________\n");
+                WriteToFile(logMessage);
+                WriteToFile("\n______________\n");
+            }
         }
     }
-}

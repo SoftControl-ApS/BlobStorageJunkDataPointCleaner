@@ -9,8 +9,8 @@ public partial class ProductionDto
     public long? TimeType { get; set; }
 
     [JsonProperty("timeStamp", NullValueHandling = NullValueHandling.Ignore)]
-    public DateTimeOffset? TimeStamp { get; set; }
+    public DateTime? TimeStamp { get; set; }
 
     [JsonProperty("inverters", NullValueHandling = NullValueHandling.Ignore)]
-    public List<Inverter> Inverters { get; set; }
+    public List<Inverter>? Inverters { get; set; }
 }

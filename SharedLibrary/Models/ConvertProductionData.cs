@@ -40,8 +40,7 @@ public partial class ProductionDto
         {
             var prod = production;
             prod.TimeStamp = production.Inverters.First().Production.First().TimeStamp;
-            //return JsonConvert.SerializeObject(production, Converter.Settings);
-            return JsonConvert.SerializeObject(production);
+            return JsonConvert.SerializeObject(production, Newtonsoft.Json.Formatting.Indented);
         }
         catch (Exception ex)
         {
