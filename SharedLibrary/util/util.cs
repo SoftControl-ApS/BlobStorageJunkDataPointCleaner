@@ -24,7 +24,7 @@ namespace SharedLibrary.util
             }
 
             return fileName;
-        }
+        }    
 
         public static string GetFileName(CloudBlockBlob blob)
         {

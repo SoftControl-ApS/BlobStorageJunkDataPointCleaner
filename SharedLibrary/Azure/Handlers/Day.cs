@@ -29,9 +29,14 @@ public partial class AzureBlobCtrl
 
         string fileName = $"pd{date.Year}{currentMonth:D2}{currentDay:D2}";
 
+        if (!await BlobExistsAsync(fileName))
+        {
+            return null;
+        }
+        
         var json = await ReadBlobFile(fileName);
 
-        if (IsValidJson(json))
+        if (json != null)
         {
             try
             {
@@ -49,11 +54,6 @@ public partial class AzureBlobCtrl
                 return null;
             }
         }
-        else
-        {
-            LogError(fileName + "\tGetDayFile() : Invalid Json");
-        }
-
         return null;
     }
 

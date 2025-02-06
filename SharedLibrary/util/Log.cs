@@ -1,4 +1,4 @@
-﻿using Figgle;
+using Figgle;
     using System;
     using System.IO;
 
@@ -7,12 +7,15 @@
         public static partial class Util
         {
             static string GetDate => DateTime.Now.ToString() + ": ";
-
+            public static object LockLogFile { get; } = new object();
             private static void WriteToFile(string message)
             {
-                using (StreamWriter writer = new StreamWriter(ApplicationVariables.LogFilePath, true))
+                lock (LockLogFile)
                 {
-                    writer.WriteLine(message);
+                    using (StreamWriter writer = new StreamWriter(ApplicationVariables.LogFilePath, true))
+                    {
+                        writer.WriteLine(message);
+                    }
                 }
             }
 
@@ -22,10 +25,9 @@
                 Console.ForegroundColor = color;
                 Console.WriteLine(message);
                 Console.ResetColor();
-                WriteToFile("\tLog : ______________\n");
+                // WriteToFile("\tLog : ______________\n");
                 WriteToFile(message);
-                WriteToFile("\n______________\n");
-
+                // WriteToFile("\n______________\n");
             }
 
             public static void LogSuccess(string title, ConsoleColor color = ConsoleColor.Green)

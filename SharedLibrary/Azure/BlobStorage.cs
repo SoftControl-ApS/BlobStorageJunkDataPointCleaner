@@ -41,15 +41,15 @@ public partial class AzureBlobCtrl
         {
             try
             {
-                if (!await BlobExistsAsync(backupName))
+                var fileexist = !await BlobExistsAsync(backupName);
+                if (!fileexist)
                 {
                     await ForcePublish($"{backupName}", originalJson, isPd: true);
                 }
             }
             catch (Exception e)
             {
-                await ForcePublish($"{backupName}", originalJson, isPd: true);
-                return true;
+                return false;
             }
         }
 
@@ -59,7 +59,7 @@ public partial class AzureBlobCtrl
 
     private async Task<bool> BlobExistsAsync(string blobName)
     {
-        var blob = _cloudBlobContainer.GetBlockBlobReference(blobName);
+        var blob = InstallationContainerReference.GetBlockBlobReference(blobName+".zip");
         try
         {
             if (blob != null)

@@ -9,9 +9,20 @@ namespace SharedLibrary
         public static object locktotalFile { get; } = new();
         public static List<Failed> FailedFiles = new();
 
+        
         private static string _logFilePath = "log.txt";
-        public static string LogFilePath { get => _logFilePath; }
+        private static readonly object _logFilePathLock = new object();
 
+        public static string LogFilePath
+        {
+            get
+            {
+                lock (_logFilePathLock)
+                {
+                    return _logFilePath;
+                }
+            }
+        }
         static ApplicationVariables()
         {
             var builder = new ConfigurationBuilder()
