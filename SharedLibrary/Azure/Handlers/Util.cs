@@ -4,6 +4,7 @@ using static SharedLibrary.util.Util;
 using System.Collections.Concurrent;
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace SharedLibrary.Azure
 {
@@ -82,6 +83,37 @@ namespace SharedLibrary.Azure
             }
 
             return sn;
+        }
+        
+        public static bool IsValidJson(string json)
+        {
+            if (json == "NOTFOUND" || string.IsNullOrEmpty(json))
+            {
+                return false;
+            }
+            else
+            {
+                try
+                {
+                    var prod = JsonConvert.DeserializeObject<ProductionDto>(json);
+                    if (prod != null)
+                        return true;
+                    else
+                        return false;
+                }
+                catch (Exception e)
+                {
+                    LogError(e);
+                    return false;
+                }
+            }
+        }
+        
+        public static T DeepClone<T>(T obj)
+        {
+            if (obj == null)
+                throw new ArgumentNullException(nameof(obj));
+            return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(obj,Newtonsoft.Json.Formatting.Indented));
         }
     }
 }

@@ -17,12 +17,10 @@ public partial class AzureBlobCtrl
         && !blob.Name.Contains("_backup"))
         .ToList();
 
-
         var productions = new ConcurrentBag<ProductionDto>();
-        foreach (var yearblob in yearBlolbBlocks.Where(b => b != null).ToList())
+        foreach (var yearblob in yearBlolbBlocks.Where(b => true).ToList())
         {
-            string response = await ReadBlobFile(GetFileName(yearblob));
-
+            string? response = await ReadBlobFile(GetFileName(yearblob));
             if (response != null)
             {
                 var yearProd = ProductionDto.FromJson(response);

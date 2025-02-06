@@ -11,6 +11,7 @@ using static Microsoft.WindowsAzure.Storage.CloudStorageAccount;
 using SharedLibrary.util;
 using static SharedLibrary.util.Util;
 using System.Numerics;
+using SharedLibrary.Models;
 
 namespace SharedLibrary.Azure
 {
@@ -234,5 +235,89 @@ namespace SharedLibrary.Azure
         }
 
         #endregion
+        
+            public async Task<string> UploadProduction(ProductionDto production, FileType fileType)
+    {
+        string fileName = string.Empty;
+
+        string prodDay = $"{production.TimeStamp.Value.Day:D2}";
+        string prodMonth = $"{production.TimeStamp.Value.Month:D2}";
+        string prodYear = $"{production.TimeStamp.Value.Year}";
+
+        switch (fileType)
+        {
+            case FileType.Day:
+                fileName = $"pd{prodYear}{prodMonth}{prodDay}";
+                break;
+            case FileType.Month:
+                fileName = $"pm{prodYear}{prodMonth}";
+                break;
+            case FileType.Year:
+                fileName = $"py{prodYear}";
+                break;
+            case FileType.Total:
+                fileName = $"pt";
+                break;
+        }
+
+        var productionJson = ProductionDto.ToJson(production);
+        return await ForcePublishAndRead(fileName, productionJson);
+    }
+
+    public async Task<bool> UploadProductionAsync(ProductionDto production, FileType fileType)
+    {
+        string fileName = string.Empty;
+
+        string prodDay = $"{production.TimeStamp.Value.Day:D2}";
+        string prodMonth = $"{production.TimeStamp.Value.Month:D2}";
+        string prodYear = $"{production.TimeStamp.Value.Year}";
+
+        switch (fileType)
+        {
+            case FileType.Day:
+                fileName = $"pd{prodYear}{prodMonth}{prodDay}";
+                break;
+            case FileType.Month:
+                fileName = $"pm{prodYear}{prodMonth}";
+                break;
+            case FileType.Year:
+                fileName = $"py{prodYear}";
+                break;
+            case FileType.Total:
+                fileName = $"pt";
+                break;
+        }
+
+        var productionJson = ProductionDto.ToJson(production);
+        return await ForcePublish(fileName, productionJson);
+    }
+
+    async Task<bool> DeleteAllYearFilesExceptDays(DateOnly date)
+    {
+        var yearBlolbBlocks = GetAllBlobsAsync().Result
+                                                .Where(blob => blob.Name.Contains($"py{date.Year}")
+                                                               && blob.Name.Contains($"pm{date.Year}")
+                                                )
+                                                .ToList();
+
+        var tasks = new List<Task>();
+        foreach (var blob in yearBlolbBlocks)
+        {
+            tasks.Add(DeleteBlobFileIfExist(GetFileName(blob)));
+        }
+
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception e)
+        {
+            LogError($"InstallationId: {InstallationId} \tCould not delete all year files, year:" + date.Year);
+            LogError($"InstallationId: {InstallationId} \t" + e.Message);
+            return false;
+        }
+
+        return true;
+    }
     }
 }

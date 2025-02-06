@@ -121,8 +121,7 @@ static class Program
                         }
                         else
                         {
-                            await instance.LoadPT();
-                            await instance.LetTheMagicHappen(new DateOnly(year, 1, 1));
+                            await instance.Run(new DateOnly(year, 1, 1));
                         }
                     }
                     catch (Exception e)
