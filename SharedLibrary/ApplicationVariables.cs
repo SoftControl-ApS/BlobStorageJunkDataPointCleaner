@@ -32,18 +32,18 @@ namespace SharedLibrary
             Configuration = builder.Build();
 
 
-            AzureBlobConnectionName = "sundatatest";
-            AzureBlobConnectionKey = "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";
+            //AzureBlobConnectionName = "sundatatest";
+            //AzureBlobConnectionKey = "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";
 
             ////AzureBlobConnectionName = "sundata";
             ////AzureBlobConnectionKey = "/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==";
 
-            AzureBlobConnectionString =
-                $"DefaultEndpointsProtocol=https;AccountName={AzureBlobConnectionName};" +
-                $"AccountKey={AzureBlobConnectionKey};" +
-                $"EndpointSuffix=core.windows.net";
+            //AzureBlobConnectionString =
+            //    $"DefaultEndpointsProtocol=https;AccountName={AzureBlobConnectionName};" +
+            //    $"AccountKey={AzureBlobConnectionKey};" +
+            //    $"EndpointSuffix=core.windows.net";
 
-            // AzureBlobConnectionString = "DefaultEndpointsProtocol=https;AccountName=sundata;AccountKey=/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==;EndpointSuffix=core.windows.net";
+            AzureBlobConnectionString = "DefaultEndpointsProtocol=https;AccountName=sundata;AccountKey=/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==;EndpointSuffix=core.windows.net";
 
             // _logFilePath = Configuration["LogFileName"];
             // string timestamp = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss");
