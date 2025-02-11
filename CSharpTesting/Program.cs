@@ -100,6 +100,7 @@ static class Program
             var installationId = installationID.ToString();
             var containerName = "installations";
             DateTime date = DateTime.Now;
+            date = date.AddYears(-1);
             var energy = 3_600_000_000;
             ApplicationVariables.SetMaxEnergyInJoule(energy);
             Console.WriteLine($"Handling Installation {installationId}");

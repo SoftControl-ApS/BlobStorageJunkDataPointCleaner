@@ -211,7 +211,7 @@ public partial class AzureBlobCtrl
                                                     Inverters = updatedInverters,
                                                 };
                         var updatedJson = ProductionDto.ToJson(updatedProduction);
-                        var result = await BackupAndReplaceOriginalFile(fileName, originalJson, updatedJson);
+                        var result = await ForcePublish(fileName, updatedJson);
                         if (!result)
                             LogError($"InstallationId: {InstallationId} \tCould Not Update filename: " +
                                      fileName);

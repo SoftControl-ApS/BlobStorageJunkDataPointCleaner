@@ -22,6 +22,10 @@ public partial class AzureBlobCtrl
 
             foreach (var month in monthsDays)
             {
+                if(month.First().Date.Year == 2024)
+                {
+
+                }
                 var monthGroup = month.ToList();
                 var result = await ConvertProductionDayToProductionMonthAsync(monthGroup);
             }

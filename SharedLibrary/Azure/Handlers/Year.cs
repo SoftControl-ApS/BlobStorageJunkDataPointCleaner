@@ -17,11 +17,11 @@ public partial class AzureBlobCtrl
             // PM -> PY 🧸
             var yearMonthsFiles = await GetYear_MonthFilessAsync(date);
 
-            if (yearMonthsFiles == null)
-            {
-                var deleted = await DeleteBlobFileIfExist(GetFileName(date, FileType.Month));
-                return string.Empty;
-            }
+            // if (yearMonthsFiles == null)
+            // {
+            //     var deleted = await DeleteBlobFileIfExist(GetFileName(date, FileType.Month));
+            //     return string.Empty;
+            // }
 
             var inverters = ExtractInverters(
                 ProductionDto.FromJson(yearMonthsFiles.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson)
@@ -39,7 +39,7 @@ public partial class AzureBlobCtrl
                 }));
             }
 
-            await Task.WhenAll(tasks);
+             await Task.WhenAll(tasks);
 
             var productionsList = productions.ToList().OrderBy(x => x.TimeStamp).ToList();
             foreach (var inverter in inverters)
