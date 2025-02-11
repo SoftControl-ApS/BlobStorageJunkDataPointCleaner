@@ -9,7 +9,7 @@ namespace SharedLibrary
         public static object locktotalFile { get; } = new();
         public static List<Failed> FailedFiles = new();
 
-        
+
         private static string _logFilePath = "log.txt";
         private static readonly object _logFilePathLock = new object();
 
@@ -23,27 +23,32 @@ namespace SharedLibrary
                 }
             }
         }
+
         static ApplicationVariables()
         {
             var builder = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+                          .SetBasePath(Directory.GetCurrentDirectory())
+                          .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
             Configuration = builder.Build();
 
 
-            //AzureBlobConnectionName = "sundatatest";
-            //AzureBlobConnectionKey = "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";
+#if DEBUG
 
+            AzureBlobConnectionName = "sundatatest";
+            AzureBlobConnectionKey =
+                "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";
+#elif TRACE
             ////AzureBlobConnectionName = "sundata";
             ////AzureBlobConnectionKey = "/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==";
+#endif
 
-            //AzureBlobConnectionString =
-            //    $"DefaultEndpointsProtocol=https;AccountName={AzureBlobConnectionName};" +
-            //    $"AccountKey={AzureBlobConnectionKey};" +
-            //    $"EndpointSuffix=core.windows.net";
+            AzureBlobConnectionString =
+                $"DefaultEndpointsProtocol=https;AccountName={AzureBlobConnectionName};" +
+                $"AccountKey={AzureBlobConnectionKey};" +
+                $"EndpointSuffix=core.windows.net";
 
-            AzureBlobConnectionString = "DefaultEndpointsProtocol=https;AccountName=sundata;AccountKey=/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==;EndpointSuffix=core.windows.net";
+            // AzureBlobConnectionString = "DefaultEndpointsProtocol=https;AccountName=sundata;AccountKey=/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==;EndpointSuffix=core.windows.net";
 
             // _logFilePath = Configuration["LogFileName"];
             // string timestamp = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss");
@@ -65,10 +70,12 @@ namespace SharedLibrary
             // Check if the file exists, if not, create it
             if (!File.Exists(_logFilePath))
             {
-                using (File.Create(_logFilePath)) { }
+                using (File.Create(_logFilePath))
+                {
+                }
             }
-
         }
+
         public class Failed
         {
             public string Name { get; set; }
@@ -79,15 +86,16 @@ namespace SharedLibrary
                 Name = name;
                 Description = desc;
             }
-
         }
 
 
         #region Private Fields
+
         internal static double MaxEnergyInJoules { get; set; }
         public static string AzureBlobConnectionName { get; private set; }
         public static string AzureBlobConnectionKey { get; private set; }
         public static string AzureBlobConnectionString { get; private set; }
+
         #endregion
 
         public static double SetMaxEnergyInJoule(double value)

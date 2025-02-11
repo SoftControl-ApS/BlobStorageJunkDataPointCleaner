@@ -10,7 +10,7 @@ namespace SharedLibrary.Azure;
 
 public partial class AzureBlobCtrl
 {
-        public async Task<string> SuyncPmToYear(DateOnly date)
+    public async Task<string> SuyncPmToYear(DateOnly date)
     {
         try
         {
@@ -46,6 +46,16 @@ public partial class AzureBlobCtrl
             {
                 foreach (var production in productionsList)
                 {
+                    var prodDate = production.TimeStamp.Value;
+                    if (prodDate.Year == 2025)
+                    {
+                        if (prodDate.Month == 2)
+                        {
+                            var prod1 = ProductionDto.FromJson(await ReadBlobFile("pm202502"));
+
+                        }
+                    }
+
                     var totalProduction = production.Inverters
                                                     .Where(x => x.Id == inverter.Id)
                                                     .SelectMany(x => x.Production)
@@ -71,7 +81,7 @@ public partial class AzureBlobCtrl
                                      TimeStamp = new DateTime(date.Year, 1, 1),
                                  };
 
-            var jsonYearResult = await ForcePublishAndRead($"py{productionYear.TimeStamp.Value.Year}",
+            var jsonYearResult = await ForcePublishAndRead(GetFileName(date, FileType.Year),
                 ProductionDto.ToJson(productionYear));
             return jsonYearResult;
         }
@@ -121,5 +131,4 @@ public partial class AzureBlobCtrl
 
         return monthsFiles;
     }
-
 }

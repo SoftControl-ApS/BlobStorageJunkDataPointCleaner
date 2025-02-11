@@ -18,11 +18,12 @@ static class Program
                               {
                                   #region Finished
 
-                                  1,2,
-                                  3,4,5,7,8,20,468,9,
-                                //14,276,105,106,
-                                  107,108,109,
-                                  10,11,13,15,
+                                  7
+                                  // 1, 2,
+                                  // 3, 4, 5, 7, 8, 20, 468, 9,
+                                  // 107, 108, 109,
+                                  // 10, 11, 13, 15,
+                                  //14,276,105,106,
                                   //110,111,112,127,149,41,
                                   //16,17,18,19,21,22,23,28,
 
@@ -74,13 +75,14 @@ static class Program
 
         Stopwatch sw = new Stopwatch();
         sw.Start();
-        var tasks = new List<Task>();
+        // var tasks = new List<Task>();
         foreach (var instID in installationIds)
         {
-            tasks.Add(Run(instID));
+            // tasks.Add(Run(instID));
+            await (Run(instID));
         }
 
-        await Task.WhenAll(tasks);
+        // await Task.WhenAll(tasks);
         sw.Stop();
         Log($"Operation took {sw.ElapsedMilliseconds / 1000}s");
         Title("FINISHED");
