@@ -48,6 +48,7 @@ namespace SharedLibrary.Azure
                 Log($"{fileName} - {InstallationId} production object was created", ConsoleColor.Yellow);
             }
 
+            LastUpLoadDateTime = DateTime.Now;
             return true;
         }
 
@@ -137,6 +138,7 @@ namespace SharedLibrary.Azure
                 }
             }
 
+            LastUpLoadDateTime = DateTime.Now;
             return true;
         }
 
@@ -152,6 +154,7 @@ namespace SharedLibrary.Azure
             CloudBlobContainer container = InstallationContainerReference;
             var blobFile = container.GetBlockBlobReference($"{InstallationId}/{zip}");
             var result = await blobFile.DeleteIfExistsAsync();
+            LastUpLoadDateTime = DateTime.Now;
             return result;
         }
         public async Task<bool> DeleteBlobFile(string zip)
@@ -169,6 +172,8 @@ namespace SharedLibrary.Azure
                 {
                     LogError("Could not delete file: " + zip);
                 }
+            
+            LastUpLoadDateTime = DateTime.Now;
 
                 return result;
             }
@@ -176,6 +181,8 @@ namespace SharedLibrary.Azure
             {
                 LogError("Could not delete zip " + zip);
                 LogError(ex.ToString());
+            LastUpLoadDateTime = DateTime.Now;
+            
                 return false;
             }
         }

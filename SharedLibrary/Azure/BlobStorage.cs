@@ -21,7 +21,20 @@ public partial class AzureBlobCtrl
     public string InstallationId { get; set; } = null;
     public string ContainerName { get; set; } = null;
 
-    List<CloudBlockBlob> _blobs = null;
+     private List<CloudBlockBlob> _cloudBlobs {get; set;}
+     public List<CloudBlockBlob> cloudBlobs {get {
+        if(_cloudBlobs == null || !_cloudBlobs.Any())
+        {
+            GetAllBlobsAsync();
+            return _cloudBlobs;
+        }
+        else 
+        return _cloudBlobs;
+        }
+         set { _cloudBlobs = value; }
+         }
+    public DateTime LastUpLoadDateTime {get;set;} 
+    public DateTime LastDownloadLoadDateTime {get;set;} 
     object lockblobs { get; } = new object();
 
     CloudBlobDirectory _installationDirectory = null;
@@ -30,6 +43,8 @@ public partial class AzureBlobCtrl
     {
         this.ContainerName = containerName;
         this.InstallationId = installationId;
+        LastDownloadLoadDateTime = DateTime.Now;
+        LastUpLoadDateTime = DateTime.Now;
     }
 
     private async Task<bool> BackupAndReplaceOriginalFile(string fileName, string? originalJson, string updatedJson)

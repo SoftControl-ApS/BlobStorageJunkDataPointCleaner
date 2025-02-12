@@ -29,10 +29,13 @@ public partial class AzureBlobCtrl
 
         string fileName = $"pd{date.Year}{currentMonth:D2}{currentDay:D2}";
 
-        if (!await BlobExistsAsync(fileName))
-        {
-            return null;
-        }
+//TODO: RETURNS FALSE EVEN IF FILE EXISTS
+        // if (!await BlobExistsAsync(fileName))
+        // {
+        //     return null;
+        // }
+
+    
 
         var json = await ReadBlobFile(fileName);
 
@@ -99,7 +102,7 @@ public partial class AzureBlobCtrl
         var yearDayBlobs = blobs.Where(x => x.Name.Contains($"pd{date.Year}")).ToList();
         if (!yearDayBlobs.Any())
         {
-            Log($"InstallationId + {InstallationId} \tNo Day Files found for this date {date.ToString()}");
+            Log($"InstallationId + {InstallationId} \tNo Day Files found for this date {date.Day}-{date.Month}-{date.Year}");
             return false;
         }
 
@@ -108,7 +111,7 @@ public partial class AzureBlobCtrl
 
     public async Task<bool> CleanYear_AllDaysFiles(DateOnly date)
     {
-        var blobs = _blobs
+        var blobs = cloudBlobs
                     .Where(blob => blob.Name.Contains($"pd{date.Year}"))
                     .Where(blob => !blob.Name.ToLower().Contains("_backup"))
                     .ToList();
@@ -226,7 +229,7 @@ public partial class AzureBlobCtrl
 
         if (_editedFiles.Any())
         {
-            Log($"InstallationId: {InstallationId} \tRemoved All junks Day DataPoints {date.ToString()}",
+            Log($"InstallationId: {InstallationId} \tRemoved All junks Day DataPoints {date.Day}-{date.Month}-{date.Year}",
                 ConsoleColor.DarkBlue);
         }
 

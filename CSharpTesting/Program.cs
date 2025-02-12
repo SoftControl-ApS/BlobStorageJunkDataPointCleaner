@@ -105,7 +105,7 @@ static class Program
             ApplicationVariables.SetMaxEnergyInJoule(energy);
             Console.WriteLine($"Handling Installation {installationId}");
             Console.WriteLine($"ContainerName: {containerName}");
-            Console.WriteLine($"date: {date.ToString()}");
+            Console.WriteLine($"date: {date.Day}-{date.Month}-{date.Year}");
             Console.WriteLine($"Max energy in Kwh: {energy / 36_00_000}");
 
             var azureBlobCtrl = new AzureBlobCtrl(containerName, installationId);

@@ -11,10 +11,13 @@ public partial class AzureBlobCtrl
     {
         try
         {
+            
+
             var yearDays = await GetYearDayFiles(date);
 
             if (!yearDays.Any())
             {
+                Log($"(Warning) InstallationId : {InstallationId}\t No days files found for year {date.Year}");
                 return;
             }
 
@@ -97,10 +100,12 @@ public partial class AzureBlobCtrl
         }
         catch (Exception e)
         {
-            LogError($"InstallationId: {InstallationId} \tProduction Month could not be uploaded ¨\t" +
-                     InstallationId +
-                     "\tDate: " +
-                     month.First().Date.ToString());
+            DateOnly? date = month.First().Date;
+            if(date == null)
+            LogError($"InstallationID {InstallationId} \tdate was null, ConvertProductionDayTOMonthASYNC");
+         
+            LogError($"InstallationId: {InstallationId} \tProduction Month could not be uploaded ¨\tInstallationID: " +InstallationId +
+                     "\tDate: " + $"{date?.Day}-{date?.Month}-{date?.Year}");
             return null;
         }
     }

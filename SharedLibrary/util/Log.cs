@@ -32,7 +32,7 @@ using Figgle;
 
             public static void LogSuccess(string title, ConsoleColor color = ConsoleColor.Green)
             {
-                string message = "Success " + GetDate + title;
+                string message = "Success \t" + GetDate + title;
                 Console.ForegroundColor = color;
                 Console.WriteLine(message);
                 Console.ResetColor();

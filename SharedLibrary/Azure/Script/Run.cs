@@ -22,15 +22,15 @@ public partial class AzureBlobCtrl
         // }
 
         //await DeleteAllYearFilesExceptDays(date);
-        bool hasfile = await CheckForDayFiles(date);
-        if (!hasfile)
-        {
-            Log($"InstallationId: {InstallationId} \t" + "Year" + date.Year + " Will not be handled");
-        }
-        else
-        {
-            await CleanYear_AllDaysFiles(date);
-        }
+        // bool hasfile = await CheckForDayFiles(date);
+        // if (!hasfile)
+        // {
+        //     Log($"InstallationId: {InstallationId} \t" + "Year" + date.Year + " Will not be handled");
+        // }
+        // else
+        // {
+        //     await CleanYear_AllDaysFiles(date);
+        // }
 
         await SyncPmWithPd(date);
         await SuyncPmToYear(date);
@@ -71,7 +71,7 @@ public partial class AzureBlobCtrl
 
             if (!blobs.Any())
             {
-                Log($"No File found for this date {date.ToString()} \t instID: {InstallationId}");
+                Log($"No File found for this date{date.Day}-{date.Month}-{date.Year} \t instID: {InstallationId}");
                 return false;
             }
             else
@@ -81,7 +81,7 @@ public partial class AzureBlobCtrl
                     if (blobs.FirstOrDefault().Name.Contains($"py{date.Year}"))
                     {
                         Log(
-                            $"InstallationId: {InstallationId} \tNo usefull File found for this date {date.ToString()}");
+                            $"InstallationId: {InstallationId} \tNo usefull File found for this date {date.Day}-{date.Month}-{date.Year}");
                         return false;
                     }
                 }
