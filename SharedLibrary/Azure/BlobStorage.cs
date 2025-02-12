@@ -21,20 +21,30 @@ public partial class AzureBlobCtrl
     public string InstallationId { get; set; } = null;
     public string ContainerName { get; set; } = null;
 
-     private List<CloudBlockBlob> _cloudBlobs {get; set;}
-     public List<CloudBlockBlob> cloudBlobs {get {
-        if(_cloudBlobs == null || !_cloudBlobs.Any())
+    private List<CloudBlockBlob> _cloudBlobs { get; set; }
+
+    public List<CloudBlockBlob> CloudBlobs
+    {
+        get
         {
-            GetAllBlobsAsync();
-            return _cloudBlobs;
+            if (_cloudBlobs == null || !_cloudBlobs.Any())
+            {
+                intiBlobs().ConfigureAwait(false);
+                return _cloudBlobs;
+            }
+            else
+                return _cloudBlobs;
         }
-        else 
-        return _cloudBlobs;
-        }
-         set { _cloudBlobs = value; }
-         }
-    public DateTime LastUpLoadDateTime {get;set;} 
-    public DateTime LastDownloadLoadDateTime {get;set;} 
+        set { _cloudBlobs = value; }
+    }
+
+    async Task intiBlobs()
+    {
+        _ = GetAllBlobsAsync().Result;
+    }
+
+    public DateTime LastUpLoadDateTime { get; set; }
+    public DateTime LastDownloadLoadDateTime { get; set; }
     object lockblobs { get; } = new object();
 
     CloudBlobDirectory _installationDirectory = null;
@@ -45,6 +55,7 @@ public partial class AzureBlobCtrl
         this.InstallationId = installationId;
         LastDownloadLoadDateTime = DateTime.Now;
         LastUpLoadDateTime = DateTime.Now;
+        intiBlobs().ConfigureAwait(false);
     }
 
     private async Task<bool> BackupAndReplaceOriginalFile(string fileName, string? originalJson, string updatedJson)
@@ -74,7 +85,7 @@ public partial class AzureBlobCtrl
 
     private async Task<bool> BlobExistsAsync(string blobName)
     {
-        var blob = InstallationContainerReference.GetBlockBlobReference(blobName+".zip");
+        var blob = InstallationContainerReference.GetBlockBlobReference(blobName + ".zip");
         try
         {
             if (blob != null)
@@ -120,6 +131,7 @@ public partial class AzureBlobCtrl
         {
             var deleted = await DeleteBlobFile(fileName);
         }
+
         return await CreateAndUploadBlobFile(json, fileName, isPd: isPd);
     }
 }

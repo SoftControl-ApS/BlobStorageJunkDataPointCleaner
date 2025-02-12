@@ -11,8 +11,6 @@ public partial class AzureBlobCtrl
     {
         try
         {
-            
-
             var yearDays = await GetYearDayFiles(date);
 
             if (!yearDays.Any())
@@ -25,10 +23,10 @@ public partial class AzureBlobCtrl
 
             foreach (var month in monthsDays)
             {
-                if(month.First().Date.Year == 2024)
+                if (month.First().Date.Year == 2024)
                 {
-
                 }
+
                 var monthGroup = month.ToList();
                 var result = await ConvertProductionDayToProductionMonthAsync(monthGroup);
             }
@@ -41,11 +39,11 @@ public partial class AzureBlobCtrl
         Log(
             $"InstallationId: {InstallationId} \tPD -> PM -> clouuudddd \ud83d\udd25 DONE {date.Month}/{date.Year}");
     }
-    
-        public async Task<string> ConvertProductionDayToProductionMonthAsync(List<MonthProductionDTO> month)
+
+    public async Task<string> ConvertProductionDayToProductionMonthAsync(List<MonthProductionDTO> month)
     {
         var inverters = ExtractInverters(
-            ProductionDto.FromJson(month.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson).Inverters
+            ProductionDto.FromJson(month.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson).Inverters!
         );
 
         foreach (var inverter in inverters)
@@ -101,10 +99,11 @@ public partial class AzureBlobCtrl
         catch (Exception e)
         {
             DateOnly? date = month.First().Date;
-            if(date == null)
-            LogError($"InstallationID {InstallationId} \tdate was null, ConvertProductionDayTOMonthASYNC");
-         
-            LogError($"InstallationId: {InstallationId} \tProduction Month could not be uploaded ¨\tInstallationID: " +InstallationId +
+            if (date == null)
+                LogError($"InstallationID {InstallationId} \tdate was null, ConvertProductionDayTOMonthASYNC");
+
+            LogError($"InstallationId: {InstallationId} \tProduction Month could not be uploaded ¨\tInstallationID: " +
+                     InstallationId +
                      "\tDate: " + $"{date?.Day}-{date?.Month}-{date?.Year}");
             return null;
         }

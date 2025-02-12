@@ -111,7 +111,7 @@ public partial class AzureBlobCtrl
 
     public async Task<bool> CleanYear_AllDaysFiles(DateOnly date)
     {
-        var blobs = cloudBlobs
+        var blobs = CloudBlobs
                     .Where(blob => blob.Name.Contains($"pd{date.Year}"))
                     .Where(blob => !blob.Name.ToLower().Contains("_backup"))
                     .ToList();
