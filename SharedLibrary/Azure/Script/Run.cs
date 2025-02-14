@@ -5,6 +5,7 @@ using System.Reflection.Metadata;
 using SharedLibrary.Models;
 using System;
 using static SharedLibrary.util.Util;
+using Microsoft.VisualBasic;
 
 namespace SharedLibrary.Azure;
 
@@ -20,17 +21,17 @@ public partial class AzureBlobCtrl
         //     LogError("Critical Error: Cannot duplicate this installation");
         //     return null;
         // }
+        // await DeleteAllYearFilesExceptDays(date);
 
-        //await DeleteAllYearFilesExceptDays(date);
-        // bool hasfile = await CheckForDayFiles(date);
-        // if (!hasfile)
-        // {
-        //     Log($"InstallationId: {InstallationId} \t" + "Year" + date.Year + " Will not be handled");
-        // }
-        // else
-        // {
-        //     await CleanYear_AllDaysFiles(date);
-        // }
+        bool hasfile = await CheckForDayFiles(date);
+        if (!hasfile)
+        {
+            Log($"InstallationId: {InstallationId} \t" + "Year" + date.Year + " Will not be handled");
+        }
+        else
+        {
+            await CleanYear_AllDaysFiles(date);
+        }
 
         await SyncPmWithPd(date);
         await SuyncPmToYear(date);
@@ -47,7 +48,8 @@ public partial class AzureBlobCtrl
                         .Where(blob => blob != null)
                         .Where(blob => blob.Name.Contains($"pd{date.Year}") ||
                                        blob.Name.Contains($"pm{date.Year}") ||
-                                       blob.Name.Contains($"pm{date.Year}"))
+                                       blob.Name.Contains($"py{date.Year}") ||
+                                       blob.Name.Contains($"pt"))
                         .ToList();
 
             try
@@ -64,6 +66,13 @@ public partial class AzureBlobCtrl
             catch (Exception)
             {
                 Console.WriteLine($"InstallationId: {InstallationId} \tNo power total file found");
+
+                var pt = allCloudBlobs.First(b => b.Name.Contains("pm"));
+                if(pt != null)
+                {
+                    return true;
+                }
+
                 Console.WriteLine($"InstallationId: {InstallationId} \tPress a key to continue");
                 Console.ReadLine();
             }
@@ -128,6 +137,7 @@ public partial class AzureBlobCtrl
         try
         {
             //PY -> PT -> clouuudddd 🔥
+            intiBlobs();
             var productions = await GetYearsAsync();
             var inverters = ExtractInverters(productions.First().Inverters);
 
@@ -135,8 +145,23 @@ public partial class AzureBlobCtrl
             {
                 foreach (var production in productions)
                 {
+                    DateTime productionDate = production.TimeStamp.Value;
+                    if(YearsToSkip.Any(X => X.Year == productionDate.Year))
+                    {
+                        continue;
+                    }
+
                     double totalProduction = 0;
-                    var inv = production.Inverters.First(x => x.Id == inverter.Id);
+                    Inverter? inv = null;
+                    try{
+
+                    inv = production.Inverters.First(x => x.Id == inverter.Id);
+                    }catch (Exception e)
+                    {
+                        LogError($"InstallationID: {InstallationId}\t OnHandling total File, Year {production.TimeStamp.Value.Year} threw an exception : \n \t\t\t " + e);
+                    continue;
+                    }
+
                     double sum = (double)inv.Production.Sum(x => x.Value);
                     totalProduction += sum;
 
@@ -153,7 +178,7 @@ public partial class AzureBlobCtrl
                 }
 
                 inverter.Production = inverter
-                                      .Production.OrderBy(x => x.TimeStamp)
+                                      .Production.OrderByDescending(x => x.TimeStamp)
                                       .ToList();
             }
 
@@ -169,7 +194,12 @@ public partial class AzureBlobCtrl
             var productionJson = ProductionDto.ToJson(productionTotal);
             res = await ForcePublishAndRead("pt", productionJson);
 
-            //res = await UploadProduction(productionTotal, FileType.Total);
+
+            Parallel.ForEach(YearsToSkip, async yearDate => {
+                await DeleteBlobFile($"pm{yearDate.Year}.zip");
+            } );
+
+            res = await UploadProduction(productionTotal, FileType.Total);
 
             Log($"InstallationId: {InstallationId} \tYear -> PT DONE {date.Year}");
 

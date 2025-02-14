@@ -63,8 +63,9 @@ namespace SharedLibrary
             {
                 Directory.CreateDirectory(logDirectory);
             }
+            var d = DateTime.Now;
 
-            string timestamp = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss");
+            string timestamp = $"{d.Year:D4}-{d.Month:D2}-{d.Day:D2}-{d.Hour}-{d.Minute}-{d.Second}";
             _logFilePath = Path.Combine(logDirectory, $"log-{timestamp}.txt");
 
             // Check if the file exists, if not, create it

@@ -10,6 +10,7 @@ namespace SharedLibrary.Azure;
 
 public partial class AzureBlobCtrl
 {
+    ConcurrentBag<DateTime> YearsToSkip = new();
     public async Task<string> SuyncPmToYear(DateOnly date)
     {
         try
@@ -17,11 +18,11 @@ public partial class AzureBlobCtrl
             // PM -> PY 🧸
             var yearMonthsFiles = await GetYear_MonthFilessAsync(date);
 
-            // if (yearMonthsFiles == null)
-            // {
-            //     var deleted = await DeleteBlobFileIfExist(GetFileName(date, FileType.Month));
-            //     return string.Empty;
-            // }
+            if (yearMonthsFiles == null)
+            {
+                // var deleted = await DeleteBlobFileIfExist(GetFileName(date, FileType.Month));
+                return string.Empty;
+            }
 
             var inverters = ExtractInverters(
                 ProductionDto.FromJson(yearMonthsFiles.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson)
@@ -47,13 +48,11 @@ public partial class AzureBlobCtrl
                 foreach (var production in productionsList)
                 {
                     var prodDate = production.TimeStamp.Value;
-                    if (prodDate.Year == 2025)
+                    if (prodDate.Year == 2025 && prodDate.Month == 2)
                     {
-                        if (prodDate.Month == 2)
-                        {
-                            var prod1 = ProductionDto.FromJson(await ReadBlobFile("pm202502"));
-
-                        }
+                           var prod = ProductionDto.FromJson(await ReadBlobFile("pm202502"));
+                           production.Inverters = new List<Inverter>();
+                           production.Inverters = prod.Inverters;
                     }
 
                     var totalProduction = production.Inverters
@@ -81,6 +80,12 @@ public partial class AzureBlobCtrl
                                      TimeStamp = new DateTime(date.Year, 1, 1),
                                  };
 
+
+            var yearPRoductionSum = productionYear.Inverters.Sum(x => x.Production.Sum(x => x.Value));
+            if(yearPRoductionSum <= 0)
+            {
+                YearsToSkip.Add(productionYear.TimeStamp.Value);
+            }
             var jsonYearResult = await ForcePublishAndRead(GetFileName(date, FileType.Year),
                 ProductionDto.ToJson(productionYear));
             return jsonYearResult;

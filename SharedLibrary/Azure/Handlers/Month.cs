@@ -23,10 +23,6 @@ public partial class AzureBlobCtrl
 
             foreach (var month in monthsDays)
             {
-                if (month.First().Date.Year == 2024)
-                {
-                }
-
                 var monthGroup = month.ToList();
                 var result = await ConvertProductionDayToProductionMonthAsync(monthGroup);
             }
@@ -51,10 +47,23 @@ public partial class AzureBlobCtrl
             var totalMonthProduction = 0.0;
             DateTime? date = new DateTime?();
             List<DataPoint> productions = new List<DataPoint>();
+            
+            if(month.First().Date > new DateOnly(2025,01,20))
+            continue;
+
             foreach (var day in month)
             {
                 var productionDay = ProductionDto.FromJson(day.DataJson);
-                var inverterProduction = productionDay.Inverters.Single(x => x.Id == inverter.Id);
+                 Inverter inverterProduction = null;
+                try{
+                    inverterProduction = productionDay.Inverters.Single(x => x.Id == inverter.Id);
+                }
+                catch(Exception e)
+                {
+                    LogError($"InstallationID {InstallationId} \t"+
+                    "Exception When getting Inverter.Single()\t" +
+                    $"Date: {date}");
+                }
 
                 if (inverterProduction != null)
                 {

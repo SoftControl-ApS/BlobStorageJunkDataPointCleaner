@@ -271,33 +271,7 @@ namespace SharedLibrary.Azure
         return await ForcePublishAndRead(fileName, productionJson);
     }
 
-    public async Task<bool> UploadProductionAsync(ProductionDto production, FileType fileType)
-    {
-        string fileName = string.Empty;
-
-        string prodDay = $"{production.TimeStamp.Value.Day:D2}";
-        string prodMonth = $"{production.TimeStamp.Value.Month:D2}";
-        string prodYear = $"{production.TimeStamp.Value.Year}";
-
-        switch (fileType)
-        {
-            case FileType.Day:
-                fileName = $"pd{prodYear}{prodMonth}{prodDay}";
-                break;
-            case FileType.Month:
-                fileName = $"pm{prodYear}{prodMonth}";
-                break;
-            case FileType.Year:
-                fileName = $"py{prodYear}";
-                break;
-            case FileType.Total:
-                fileName = $"pt";
-                break;
-        }
-
-        var productionJson = ProductionDto.ToJson(production);
-        return await ForcePublish(fileName, productionJson);
-    }
+   
 
     async Task<bool> DeleteAllYearFilesExceptDays(DateOnly date)
     {

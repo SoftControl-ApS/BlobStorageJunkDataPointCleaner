@@ -18,7 +18,7 @@ static class Program
                               {
                                   #region Finished
 
-                                  7
+                                  7, 4, 102
                                   // 1, 2,
                                   // 3, 4, 5, 7, 8, 20, 468, 9,
                                   // 107, 108, 109,
@@ -29,7 +29,6 @@ static class Program
 
                                   #endregion
 
-                                  //7,
                                   //102,
                                   //155,
                                   //44, 45, 46, 47, 48, 49, 50,
@@ -75,18 +74,27 @@ static class Program
 
         Stopwatch sw = new Stopwatch();
         sw.Start();
-        // var tasks = new List<Task>();
+        var tasks = new List<Task>();
         foreach (var instID in installationIds)
         {
-            // tasks.Add(Run(instID));
-            await (Run(instID));
+            tasks.Add(Run(instID));
         }
 
-        // await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks);
         sw.Stop();
         Log($"Operation took {sw.ElapsedMilliseconds / 1000}s");
         Title("FINISHED");
         Console.WriteLine("Run is complete. Press Enter to exit.");
+
+        if (failedFiles.Any())
+        {
+            Title("Failed Files");
+            foreach (var s in failedFiles)
+            {
+                Console.WriteLine($"{s.Key} | {s.Value}");
+            }
+        }
+
         Console.ReadLine();
         Console.ReadLine();
         Console.ReadLine();
@@ -100,8 +108,8 @@ static class Program
             var installationId = installationID.ToString();
             var containerName = "installations";
             DateTime date = DateTime.Now;
-            date = date.AddYears(-1);
-            var energy = 3_600_000_000;
+            // var energy = 3_600_000_000;
+            var energy =540_000_000;
             ApplicationVariables.SetMaxEnergyInJoule(energy);
             Console.WriteLine($"Handling Installation {installationId}");
             Console.WriteLine($"ContainerName: {containerName}");
@@ -109,6 +117,7 @@ static class Program
             Console.WriteLine($"Max energy in Kwh: {energy / 36_00_000}");
 
             var azureBlobCtrl = new AzureBlobCtrl(containerName, installationId);
+            var instance = new AzureBlobCtrl(containerName, installationId);
             var solvePy = await azureBlobCtrl.SolvePy(date);
             if (solvePy)
             {
@@ -119,7 +128,7 @@ static class Program
 
                     try
                     {
-                        var instance = new AzureBlobCtrl(containerName, installationId);
+                        // var instance = new AzureBlobCtrl(containerName, installationId);
                         var foundFiles = await instance.CheckForExistingFiles(newDate);
                         if (!foundFiles)
                         {
@@ -136,8 +145,7 @@ static class Program
                         failedFiles.TryAdd(installationId, e.Message);
                     }
                 }
-
-                var result = await azureBlobCtrl.YearToPT(DateOnly.FromDateTime(date));
+                var result = await instance.YearToPT(DateOnly.FromDateTime(date));
             }
 
             _ = ApplicationVariables.FailedFiles.GroupBy(x => x.Name).OrderBy(x => x.Count()).ToList();
@@ -145,16 +153,6 @@ static class Program
         catch (Exception e)
         {
             failedFiles.TryAdd($"Somewhere", e.Message);
-        }
-
-
-        if (failedFiles.Any())
-        {
-            Title("Failed Files");
-            foreach (var s in failedFiles)
-            {
-                Console.WriteLine($"{s.Key} | {s.Value}");
-            }
         }
     }
 }
