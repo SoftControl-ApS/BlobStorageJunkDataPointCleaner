@@ -172,8 +172,8 @@ namespace SharedLibrary.Azure
                 {
                     LogError("Could not delete file: " + zip);
                 }
-            
-            LastUpLoadDateTime = DateTime.Now;
+
+                LastUpLoadDateTime = DateTime.Now;
 
                 return result;
             }
@@ -181,8 +181,8 @@ namespace SharedLibrary.Azure
             {
                 LogError("Could not delete zip " + zip);
                 LogError(ex.ToString());
-            LastUpLoadDateTime = DateTime.Now;
-            
+                LastUpLoadDateTime = DateTime.Now;
+
                 return false;
             }
         }
@@ -242,63 +242,79 @@ namespace SharedLibrary.Azure
         }
 
         #endregion
-        
-            public async Task<string> UploadProduction(ProductionDto production, FileType fileType)
-    {
-        string fileName = string.Empty;
 
-        string prodDay = $"{production.TimeStamp.Value.Day:D2}";
-        string prodMonth = $"{production.TimeStamp.Value.Month:D2}";
-        string prodYear = $"{production.TimeStamp.Value.Year}";
-
-        switch (fileType)
+        public async Task<string> UploadProduction(ProductionDto production, FileType fileType)
         {
-            case FileType.Day:
-                fileName = $"pd{prodYear}{prodMonth}{prodDay}";
-                break;
-            case FileType.Month:
-                fileName = $"pm{prodYear}{prodMonth}";
-                break;
-            case FileType.Year:
-                fileName = $"py{prodYear}";
-                break;
-            case FileType.Total:
-                fileName = $"pt";
-                break;
+            string fileName = string.Empty;
+
+            string prodDay = $"{production.TimeStamp.Value.Day:D2}";
+            string prodMonth = $"{production.TimeStamp.Value.Month:D2}";
+            string prodYear = $"{production.TimeStamp.Value.Year}";
+
+            switch (fileType)
+            {
+                case FileType.Day:
+                    fileName = $"pd{prodYear}{prodMonth}{prodDay}";
+                    break;
+                case FileType.Month:
+                    fileName = $"pm{prodYear}{prodMonth}";
+                    break;
+                case FileType.Year:
+                    fileName = $"py{prodYear}";
+                    break;
+                case FileType.Total:
+                    fileName = $"pt";
+                    break;
+            }
+
+            var productionJson = ProductionDto.ToJson(production);
+            return await ForcePublishAndRead(fileName, productionJson);
         }
 
-        var productionJson = ProductionDto.ToJson(production);
-        return await ForcePublishAndRead(fileName, productionJson);
-    }
 
-   
 
-    async Task<bool> DeleteAllYearFilesExceptDays(DateOnly date)
-    {
-        var yearBlolbBlocks = GetAllBlobsAsync().Result
-                                                .Where(blob => blob.Name.Contains($"py{date.Year}")
-                                                               && blob.Name.Contains($"pm{date.Year}")
-                                                )
-                                                .ToList();
-
-        var tasks = new List<Task>();
-        foreach (var blob in yearBlolbBlocks)
+        async Task<bool> DeleteAllYearFilesExceptDays(DateOnly date)
         {
-            tasks.Add(DeleteBlobFileIfExist(GetFileName(blob)));
-        }
+            Console.WriteLine("Are you sure ýou want to delete all year files except days");
+            var answe = Console.ReadLine();
 
-        try
-        {
-            await Task.WhenAll(tasks);
-        }
-        catch (Exception e)
-        {
-            LogError($"InstallationId: {InstallationId} \tCould not delete all year files, year:" + date.Year);
-            LogError($"InstallationId: {InstallationId} \t" + e.Message);
-            return false;
-        }
+            if (answe == "y")
+            {
+                Console.WriteLine("Ask oli first");
+                return false;
 
-        return true;
-    }
+            }
+            else
+            {
+                Console.WriteLine("Operation canceled");
+
+                return false;
+            }
+
+            var yearBlolbBlocks = GetAllBlobsAsync().Result
+                                                    .Where(blob => blob.Name.Contains($"py{date.Year}")
+                                                                   && blob.Name.Contains($"pm{date.Year}")
+                                                    )
+                                                    .ToList();
+
+            var tasks = new List<Task>();
+            foreach (var blob in yearBlolbBlocks)
+            {
+                tasks.Add(DeleteBlobFileIfExist(GetFileName(blob)));
+            }
+
+            try
+            {
+                await Task.WhenAll(tasks);
+            }
+            catch (Exception e)
+            {
+                LogError($"InstallationId: {InstallationId} \tCould not delete all year files, year:" + date.Year);
+                LogError($"InstallationId: {InstallationId} \t" + e.Message);
+                return false;
+            }
+
+            return true;
+        }
     }
 }

@@ -25,12 +25,11 @@ public partial class AzureBlobCtrl // PR: partial class sucks. Don't bother to c
 
     private async Task<List<CloudBlockBlob>>? GetAllBlobsAsync()
     {
-        if (_installationDirectory == null)
-            _installationDirectory = GetContainerReference(ContainerName).GetDirectoryReference(InstallationId);
-        // var cloudBlobDirectory = InstallationContainerReference.GetDirectoryReference(InstallationId);
-
         if (LastDownloadLoadDateTime <= LastUpLoadDateTime)
         {
+            if (_installationDirectory == null)
+                _installationDirectory = GetContainerReference(ContainerName).GetDirectoryReference(InstallationId);
+
             CloudBlobs = new();
             BlobContinuationToken? continuationToken = null;
             do

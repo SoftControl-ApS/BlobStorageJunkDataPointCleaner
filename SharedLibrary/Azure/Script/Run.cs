@@ -12,16 +12,16 @@ namespace SharedLibrary.Azure;
 public partial class AzureBlobCtrl
 {
     private ConcurrentDictionary<string, string> _editedFiles = new ConcurrentDictionary<string, string>();
-    
+
     public async Task<string> Run(DateOnly date)
     {
-        // var duplicateResult = await DuplicateBlobFolder(ContainerName, InstallationId);
-        // if (!duplicateResult)
-        // {
-        //     LogError("Critical Error: Cannot duplicate this installation");
-        //     return null;
-        // }
-        // await DeleteAllYearFilesExceptDays(date);
+        //var duplicateResult = await DuplicateBlobFolder(ContainerName, InstallationId);
+        //if (!duplicateResult)
+        //{
+        //    LogError("Critical Error: Cannot duplicate this installation");
+        //    return null;
+        //}
+        //await DeleteAllYearFilesExceptDays(date);
 
         bool hasfile = await CheckForDayFiles(date);
         if (!hasfile)
@@ -68,7 +68,7 @@ public partial class AzureBlobCtrl
                 Console.WriteLine($"InstallationId: {InstallationId} \tNo power total file found");
 
                 var pt = allCloudBlobs.First(b => b.Name.Contains("pm"));
-                if(pt != null)
+                if (pt != null)
                 {
                     return true;
                 }
@@ -127,9 +127,9 @@ public partial class AzureBlobCtrl
             return false;
         }
     }
-    
 
-    
+
+
     #region Yeart -> PT
 
     public async Task<string> YearToPT(DateOnly date)
@@ -139,42 +139,53 @@ public partial class AzureBlobCtrl
             //PY -> PT -> clouuudddd 🔥
             intiBlobs();
             var productions = await GetYearsAsync();
-            var inverters = ExtractInverters(productions.First().Inverters);
+            List<ProductionDto> filterprod = productions.OrderBy(p => p.TimeStamp).Where(p => (p.TimeStamp.HasValue) &&
+            p.TimeStamp.Value.Year <= DateTime.Now.Year && 
+            p.TimeStamp.Value.Year >= 2014).ToList();
+
+            var inverters = ExtractInverters(filterprod.First(x => x.TimeStamp.Value.Year == DateTime.Now.Year).Inverters);
 
             foreach (var inverter in inverters)
             {
-                foreach (var production in productions)
+                foreach (var production in filterprod)
                 {
                     DateTime productionDate = production.TimeStamp.Value;
-                    if(YearsToSkip.Any(X => X.Year == productionDate.Year))
+                    if (YearsToSkip.Any(X => X.Year == productionDate.Year))
+                    {
+                        continue;
+                    }
+
+                    if (productionDate.Year < 2014 || productionDate.Year > DateTime.Now.Year)
                     {
                         continue;
                     }
 
                     double totalProduction = 0;
                     Inverter? inv = null;
-                    try{
-
-                    inv = production.Inverters.First(x => x.Id == inverter.Id);
-                    }catch (Exception e)
+                    try
                     {
-                        LogError($"InstallationID: {InstallationId}\t OnHandling total File, Year {production.TimeStamp.Value.Year} threw an exception : \n \t\t\t " + e);
-                    continue;
+                        inv = production.Inverters.First(x => x.Id == inverter.Id);
+                    }
+                    catch (Exception e)
+                    {
+                        LogError($"InstallationID: {InstallationId}\t OnHandling total File, Year {production.TimeStamp.Value.Year} threw an exception :" +
+                            $" \n \t\t\t " + e);
+                        continue;
                     }
 
                     double sum = (double)inv.Production.Sum(x => x.Value);
                     totalProduction += sum;
 
-                    if (totalProduction > 0)
-                        inverter.Production.Add(
-                            new DataPoint()
-                            {
-                                Quality = 1,
-                                TimeStamp =
-                                    new DateTime(production.TimeStamp.Value.Year, 1, 1),
-                                Value = totalProduction,
-                            }
-                        );
+                    //if (totalProduction > 0)
+                    inverter.Production.Add(
+                        new DataPoint()
+                        {
+                            Quality = 1,
+                            TimeStamp =
+                                new DateTime(production.TimeStamp.Value.Year, 1, 1),
+                            Value = totalProduction,
+                        }
+                    );
                 }
 
                 inverter.Production = inverter
@@ -183,26 +194,25 @@ public partial class AzureBlobCtrl
             }
 
             var productionTotal = new ProductionDto()
-                                  {
-                                      Inverters = inverters.ToList(),
-                                      TimeType = (int)FileType.Total,
-                                      TimeStamp = new DateTime((new DateOnly(2014, 1, 1)), TimeOnly.MinValue,
+            {
+                Inverters = inverters.OrderBy(i => i.Id).ToList(),
+                TimeType = (int)FileType.Total,
+                TimeStamp = new DateTime((new DateOnly(2014, 1, 1)), TimeOnly.MinValue,
                                           DateTimeKind.Local)
-                                  };
+            };
 
             var res = string.Empty;
             var productionJson = ProductionDto.ToJson(productionTotal);
             res = await ForcePublishAndRead("pt", productionJson);
 
 
-            Parallel.ForEach(YearsToSkip, async yearDate => {
-                await DeleteBlobFile($"pm{yearDate.Year}.zip");
-            } );
+            Parallel.ForEach(YearsToSkip, async yearDate =>
+            {
+                await DeleteBlobFile($"py{yearDate.Year}.zip");
+            });
 
-            res = await UploadProduction(productionTotal, FileType.Total);
 
             Log($"InstallationId: {InstallationId} \tYear -> PT DONE {date.Year}");
-
             return res;
         }
         catch (Exception e)

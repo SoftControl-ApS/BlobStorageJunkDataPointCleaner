@@ -42,7 +42,14 @@ namespace SharedLibrary
             ////AzureBlobConnectionName = "sundata";
             ////AzureBlobConnectionKey = "/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==";
 #endif
+            if (!AzureBlobConnectionName.Contains("test"))
+            {
 
+                Console.WriteLine("Current blob conneciotn is not test");
+                Console.ReadLine();
+                Console.ReadLine();
+                Console.ReadLine();
+            }
             AzureBlobConnectionString =
                 $"DefaultEndpointsProtocol=https;AccountName={AzureBlobConnectionName};" +
                 $"AccountKey={AzureBlobConnectionKey};" +
@@ -92,7 +99,7 @@ namespace SharedLibrary
 
         #region Private Fields
 
-        internal static double MaxEnergyInJoules { get; set; }
+        internal static double MaxEnergyInJoules { get; } = 540_000_000;
         public static string AzureBlobConnectionName { get; private set; }
         public static string AzureBlobConnectionKey { get; private set; }
         public static string AzureBlobConnectionString { get; private set; }
@@ -101,7 +108,7 @@ namespace SharedLibrary
 
         public static double SetMaxEnergyInJoule(double value)
         {
-            ApplicationVariables.MaxEnergyInJoules = value;
+            //ApplicationVariables.MaxEnergyInJoules = value;
             return ApplicationVariables.MaxEnergyInJoules;
         }
 

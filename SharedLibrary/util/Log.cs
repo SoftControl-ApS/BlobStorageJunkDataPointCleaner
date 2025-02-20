@@ -21,7 +21,7 @@ using Figgle;
 
             public static void Log(string title, ConsoleColor color = ConsoleColor.Cyan)
             {
-                string message = "Log " + GetDate + title;
+                string message = "\nLog " + GetDate + title;
                 Console.ForegroundColor = color;
                 Console.WriteLine(message);
                 Console.ResetColor();
@@ -32,7 +32,7 @@ using Figgle;
 
             public static void LogSuccess(string title, ConsoleColor color = ConsoleColor.Green)
             {
-                string message = "Success \t" + GetDate + title;
+                string message = "\nSuccess \t" + GetDate + title;
                 Console.ForegroundColor = color;
                 Console.WriteLine(message);
                 Console.ResetColor();
@@ -45,7 +45,7 @@ using Figgle;
             public static void Title(string title, ConsoleColor color = ConsoleColor.Magenta)
             {
                 var banner = FiggleFonts.Standard.Render(title);
-                string message = GetDate + banner;
+                string message = "\n" + GetDate + banner;
                 Console.ForegroundColor = color;
                 Console.WriteLine(message);
                 Console.ResetColor();
@@ -57,7 +57,7 @@ using Figgle;
 
             public static void LogError(string title, ConsoleColor color = ConsoleColor.Red)
             {
-                string message = "Error " + GetDate + title;
+                string message = "\nError " + GetDate + title;
                 Console.ForegroundColor = color;
                 Console.WriteLine(message);
                 Console.ResetColor();
@@ -73,7 +73,7 @@ using Figgle;
 
             public static void Message(string message)
             {
-                string logMessage = "Message " + GetDate + message;
+                string logMessage = "\nMessage " + GetDate + message;
                 Console.ForegroundColor = ConsoleColor.Gray;
                 Console.WriteLine(logMessage);
                 Console.ResetColor();

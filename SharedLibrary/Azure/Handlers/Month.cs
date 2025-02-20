@@ -23,8 +23,10 @@ public partial class AzureBlobCtrl
 
             foreach (var month in monthsDays)
             {
+                Console.WriteLine("Working ... ");
                 var monthGroup = month.ToList();
                 var result = await ConvertProductionDayToProductionMonthAsync(monthGroup);
+                Console.WriteLine("Working ... ");
             }
         }
         catch (Exception e)

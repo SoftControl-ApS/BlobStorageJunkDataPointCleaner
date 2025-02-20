@@ -85,11 +85,13 @@ public partial class AzureBlobCtrl
 
     private async Task<bool> BlobExistsAsync(string blobName)
     {
-        var blob = InstallationContainerReference.GetBlockBlobReference(blobName + ".zip");
+        //var blob = InstallationContainerReference.GetBlockBlobReference(blobName + ".zip");
+        var blobs = await GetAllBlobsAsync();
+        var blob = blobs.Where(b => b.Name.Contains(InstallationId + "/" + blobName+".zip")).ToList();
         try
         {
             if (blob != null)
-                return await blob.ExistsAsync();
+                return await blob.FirstOrDefault().ExistsAsync();
             return false;
         }
         catch (Exception e)
