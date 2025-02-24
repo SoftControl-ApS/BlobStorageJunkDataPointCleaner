@@ -145,15 +145,29 @@ public partial class AzureBlobCtrl
 
             var inverters = ExtractInverters(filterprod.First(x => x.TimeStamp.Value.Year == DateTime.Now.Year).Inverters);
 
+            foreach(var month in filterprod) {
+            var invs = ExtractInverters(month.Inverters);
+
+            foreach(var inverrr in invs) {
+                if (!inverters.Any(i => i.Id == inverrr.Id)) {
+                inverters.Add(new Inverter() {
+                    Id = inverrr.Id,
+                    Production = new List < DataPoint > ();
+                });
+                }
+            }
+            }
+
+
             foreach (var inverter in inverters)
             {
                 foreach (var production in filterprod)
                 {
                     DateTime productionDate = production.TimeStamp.Value;
-                    if (YearsToSkip.Any(X => X.Year == productionDate.Year))
-                    {
-                        continue;
-                    }
+                    // if (YearsToSkip.Any(X => X.Year == productionDate.Year))
+                    // {
+                    //     continue;
+                    // }
 
                     if (productionDate.Year < 2014 || productionDate.Year > DateTime.Now.Year)
                     {
@@ -168,7 +182,7 @@ public partial class AzureBlobCtrl
                     }
                     catch (Exception e)
                     {
-                        LogError($"InstallationID: {InstallationId}\t OnHandling total File, Year {production.TimeStamp.Value.Year} threw an exception :" +
+                        LogError($"InstallationID: {InstallationId} \tIverterId: {inverter.Id}\t OnHandling total File, Year {production.TimeStamp.Value.Year} threw an exception :" +
                             $" \n \t\t\t " + e);
                         continue;
                     }
@@ -206,10 +220,10 @@ public partial class AzureBlobCtrl
             res = await ForcePublishAndRead("pt", productionJson);
 
 
-            Parallel.ForEach(YearsToSkip, async yearDate =>
-            {
-                await DeleteBlobFile($"py{yearDate.Year}.zip");
-            });
+            // Parallel.ForEach(YearsToSkip, async yearDate =>
+            // {
+            //     await DeleteBlobFile($"py{yearDate.Year}.zip");
+            // });
 
 
             Log($"InstallationId: {InstallationId} \tYear -> PT DONE {date.Year}");

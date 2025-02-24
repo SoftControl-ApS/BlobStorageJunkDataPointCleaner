@@ -15,6 +15,8 @@ public partial class AzureBlobCtrl
     {
         try
         {
+                        date = new DateOnly(2023,1,1);
+
             // PM -> PY 🧸
             var yearMonthsFiles = await GetYear_MonthFilessAsync(date);
 
@@ -24,23 +26,39 @@ public partial class AzureBlobCtrl
                 return string.Empty;
             }
 
-            var inverters = ExtractInverters(
-                ProductionDto.FromJson(yearMonthsFiles.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson)
-                             .Inverters
-            );
+            var inverters = new ConcurrentBag<Inverter>();
 
-            var productions = new ConcurrentBag<ProductionDto>();
-            var tasks = new List<Task>();
-            foreach (var month in yearMonthsFiles.Where(x => x != null))
+            foreach(var month in yearMonthsFiles)
             {
-                tasks.Add(Task.Run(() =>
+                var invs = ExtractInverters(
+                ProductionDto.FromJson(yearMonthsFiles.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson)
+                             .Inverters);
+
+                foreach(var inverrr in invs)
                 {
-                    var prod = ProductionDto.FromJson(month.DataJson);
-                    productions.Add(prod);
-                }));
+                  if(!inverters.Any(i => i.Id == inverrr.Id))
+                  {
+                    inverters.Add(new Inverter(){
+                        Id = inverrr.Id,
+                        Production = new List<DataPoint>();
+                    });
+                  }   
+                }
             }
 
-             await Task.WhenAll(tasks);
+
+            var productions = new ConcurrentBag<ProductionDto>();
+            // var tasks = new List<Task>();
+            foreach (var month in yearMonthsFiles.Where(x => x != null))
+            {
+                // tasks.Add(Task.Run(() =>
+                // {
+                    var prod = ProductionDto.FromJson(month.DataJson);
+                    productions.Add(prod);
+                // }));
+            }
+
+            //  await Task.WhenAll(tasks);
 
             var productionsList = productions.ToList().OrderBy(x => x.TimeStamp).ToList();
             foreach (var inverter in inverters)

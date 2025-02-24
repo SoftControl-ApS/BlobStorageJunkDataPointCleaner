@@ -40,7 +40,7 @@ public partial class AzureBlobCtrl
 
     async Task intiBlobs()
     {
-        _ = GetAllBlobsAsync().Result;
+        _ = GetAllBlobsAsync(true).Result;
     }
 
     public DateTime LastUpLoadDateTime { get; set; }

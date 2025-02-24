@@ -40,9 +40,33 @@ public partial class AzureBlobCtrl
 
     public async Task<string> ConvertProductionDayToProductionMonthAsync(List<MonthProductionDTO> month)
     {
-        var inverters = ExtractInverters(
-            ProductionDto.FromJson(month.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson).Inverters!
-        );
+        // var inverters = ExtractInverters(
+        //     ProductionDto.FromJson(month.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson).Inverters!
+        // );
+         var inverters = new List<Inverter>();
+
+        foreach(var day in month)
+        {   
+            try
+            {
+                var invs = ExtractInverters(ProductionDto.FromJson(day.DataJson).Inverters);
+
+                foreach(var inverrr in invs)
+                {
+                    if(!inverters.Any(i => i.Id == inverrr.Id))
+                    {
+                        inverters.Add(new Inverter(){
+                            Id = inverrr.Id,
+                            Production = new List<DataPoint>();
+                        });
+                    }   
+                }
+            }
+            catch (Exception e)
+            {
+                LogError("Could not extract inverters");
+            }
+        }
 
         foreach (var inverter in inverters)
         {

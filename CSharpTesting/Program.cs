@@ -17,7 +17,8 @@ static class Program
         var installationIds = new List<int>()
         {
             //1,2,3,
-            4, 7
+            // 4, 
+            7
             // 5,7,
             //8,9,14,10,
             // 11,13,15,16,17,18,19,

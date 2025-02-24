@@ -23,9 +23,9 @@ public partial class AzureBlobCtrl // PR: partial class sucks. Don't bother to c
         return blobClient;
     }
 
-    private async Task<List<CloudBlockBlob>>? GetAllBlobsAsync()
+    private async Task<List<CloudBlockBlob>>? GetAllBlobsAsync(bool refetch = false)
     {
-        if (LastDownloadLoadDateTime <= LastUpLoadDateTime)
+        if (LastDownloadLoadDateTime <= LastUpLoadDateTime || refetch)
         {
             if (_installationDirectory == null)
                 _installationDirectory = GetContainerReference(ContainerName).GetDirectoryReference(InstallationId);
