@@ -11,11 +11,12 @@ namespace SharedLibrary.Azure;
 public partial class AzureBlobCtrl
 {
     ConcurrentBag<DateTime> YearsToSkip = new();
+
     public async Task<string> SuyncPmToYear(DateOnly date)
     {
         try
         {
-                        date = new DateOnly(2023,1,1);
+            date = new DateOnly(2023, 1, 1);
 
             // PM -> PY 🧸
             var yearMonthsFiles = await GetYear_MonthFilessAsync(date);
@@ -28,21 +29,22 @@ public partial class AzureBlobCtrl
 
             var inverters = new ConcurrentBag<Inverter>();
 
-            foreach(var month in yearMonthsFiles)
+            foreach (var month in yearMonthsFiles)
             {
                 var invs = ExtractInverters(
-                ProductionDto.FromJson(yearMonthsFiles.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson)
-                             .Inverters);
+                    ProductionDto.FromJson(yearMonthsFiles.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson)
+                                 .Inverters);
 
-                foreach(var inverrr in invs)
+                foreach (var inverrr in invs)
                 {
-                  if(!inverters.Any(i => i.Id == inverrr.Id))
-                  {
-                    inverters.Add(new Inverter(){
-                        Id = inverrr.Id,
-                        Production = new List<DataPoint>();
-                    });
-                  }   
+                    if (!inverters.Any(i => i.Id == inverrr.Id))
+                    {
+                        inverters.Add(new Inverter()
+                                      {
+                                          Id = inverrr.Id,
+                                          Production = new List<DataPoint>()
+                                      });
+                    }
                 }
             }
 
@@ -53,8 +55,8 @@ public partial class AzureBlobCtrl
             {
                 // tasks.Add(Task.Run(() =>
                 // {
-                    var prod = ProductionDto.FromJson(month.DataJson);
-                    productions.Add(prod);
+                var prod = ProductionDto.FromJson(month.DataJson);
+                productions.Add(prod);
                 // }));
             }
 
@@ -68,9 +70,9 @@ public partial class AzureBlobCtrl
                     var prodDate = production.TimeStamp.Value;
                     if (prodDate.Year == 2025 && prodDate.Month == 2)
                     {
-                           var prod = ProductionDto.FromJson(await ReadBlobFile("pm202502"));
-                           production.Inverters = new List<Inverter>();
-                           production.Inverters = prod.Inverters;
+                        var prod = ProductionDto.FromJson(await ReadBlobFile("pm202502"));
+                        production.Inverters = new List<Inverter>();
+                        production.Inverters = prod.Inverters;
                     }
 
                     var totalProduction = production.Inverters
@@ -100,10 +102,11 @@ public partial class AzureBlobCtrl
 
 
             var yearPRoductionSum = productionYear.Inverters.Sum(x => x.Production.Sum(x => x.Value));
-            if(yearPRoductionSum <= 0)
+            if (yearPRoductionSum <= 0)
             {
                 YearsToSkip.Add(productionYear.TimeStamp.Value);
             }
+
             var jsonYearResult = await ForcePublishAndRead(GetFileName(date, FileType.Year),
                 ProductionDto.ToJson(productionYear));
             return jsonYearResult;

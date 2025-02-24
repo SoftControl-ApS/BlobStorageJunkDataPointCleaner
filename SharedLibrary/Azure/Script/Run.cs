@@ -11,7 +11,7 @@ namespace SharedLibrary.Azure;
 
 public partial class AzureBlobCtrl
 {
-    private ConcurrentDictionary<string, string> _editedFiles = new ConcurrentDictionary<string, string>();
+    private ConcurrentDictionary<string, string> _editedFiles = new();
 
     public async Task<string> Run(DateOnly date)
     {
@@ -43,7 +43,7 @@ public partial class AzureBlobCtrl
     {
         try
         {
-            var allCloudBlobs = (await GetAllBlobsAsync());
+            var allCloudBlobs = await GetAllBlobsAsync();
             var blobs = allCloudBlobs
                         .Where(blob => blob != null)
                         .Where(blob => blob.Name.Contains($"pd{date.Year}") ||
@@ -68,10 +68,7 @@ public partial class AzureBlobCtrl
                 Console.WriteLine($"InstallationId: {InstallationId} \tNo power total file found");
 
                 var pt = allCloudBlobs.First(b => b.Name.Contains("pm"));
-                if (pt != null)
-                {
-                    return true;
-                }
+                if (pt != null) return true;
 
                 Console.WriteLine($"InstallationId: {InstallationId} \tPress a key to continue");
                 Console.ReadLine();
@@ -86,14 +83,12 @@ public partial class AzureBlobCtrl
             else
             {
                 if (blobs.Count == 1)
-                {
                     if (blobs.FirstOrDefault().Name.Contains($"py{date.Year}"))
                     {
                         Log(
                             $"InstallationId: {InstallationId} \tNo usefull File found for this date {date.Day}-{date.Month}-{date.Year}");
                         return false;
                     }
-                }
             }
 
             return blobs.Any();
@@ -129,7 +124,6 @@ public partial class AzureBlobCtrl
     }
 
 
-
     #region Yeart -> PT
 
     public async Task<string> YearToPT(DateOnly date)
@@ -139,23 +133,24 @@ public partial class AzureBlobCtrl
             //PY -> PT -> clouuudddd 🔥
             intiBlobs();
             var productions = await GetYearsAsync();
-            List<ProductionDto> filterprod = productions.OrderBy(p => p.TimeStamp).Where(p => (p.TimeStamp.HasValue) &&
-            p.TimeStamp.Value.Year <= DateTime.Now.Year && 
-            p.TimeStamp.Value.Year >= 2014).ToList();
+            List<ProductionDto> filterprod = productions.OrderBy(p => p.TimeStamp).Where(p => p.TimeStamp.HasValue &&
+                p.TimeStamp.Value.Year <= DateTime.Now.Year &&
+                p.TimeStamp.Value.Year >= 2014).ToList();
 
-            var inverters = ExtractInverters(filterprod.First(x => x.TimeStamp.Value.Year == DateTime.Now.Year).Inverters);
+            var inverters =
+                ExtractInverters(filterprod.First(x => x.TimeStamp.Value.Year == DateTime.Now.Year).Inverters);
 
-            foreach(var month in filterprod) {
-            var invs = ExtractInverters(month.Inverters);
+            foreach (var month in filterprod)
+            {
+                var invs = ExtractInverters(month.Inverters);
 
-            foreach(var inverrr in invs) {
-                if (!inverters.Any(i => i.Id == inverrr.Id)) {
-                inverters.Add(new Inverter() {
-                    Id = inverrr.Id,
-                    Production = new List < DataPoint > ();
-                });
-                }
-            }
+                foreach (var inverrr in invs)
+                    if (!inverters.Any(i => i.Id == inverrr.Id))
+                        inverters.Add(new Inverter()
+                                      {
+                                          Id = inverrr.Id,
+                                          Production = new List<DataPoint>()
+                                      });
             }
 
 
@@ -163,16 +158,13 @@ public partial class AzureBlobCtrl
             {
                 foreach (var production in filterprod)
                 {
-                    DateTime productionDate = production.TimeStamp.Value;
+                    var productionDate = production.TimeStamp.Value;
                     // if (YearsToSkip.Any(X => X.Year == productionDate.Year))
                     // {
                     //     continue;
                     // }
 
-                    if (productionDate.Year < 2014 || productionDate.Year > DateTime.Now.Year)
-                    {
-                        continue;
-                    }
+                    if (productionDate.Year < 2014 || productionDate.Year > DateTime.Now.Year) continue;
 
                     double totalProduction = 0;
                     Inverter? inv = null;
@@ -182,12 +174,13 @@ public partial class AzureBlobCtrl
                     }
                     catch (Exception e)
                     {
-                        LogError($"InstallationID: {InstallationId} \tIverterId: {inverter.Id}\t OnHandling total File, Year {production.TimeStamp.Value.Year} threw an exception :" +
+                        LogError(
+                            $"InstallationID: {InstallationId} \tIverterId: {inverter.Id}\t OnHandling total File, Year {production.TimeStamp.Value.Year} threw an exception :" +
                             $" \n \t\t\t " + e);
                         continue;
                     }
 
-                    double sum = (double)inv.Production.Sum(x => x.Value);
+                    var sum = (double)inv.Production.Sum(x => x.Value);
                     totalProduction += sum;
 
                     //if (totalProduction > 0)
@@ -197,7 +190,7 @@ public partial class AzureBlobCtrl
                             Quality = 1,
                             TimeStamp =
                                 new DateTime(production.TimeStamp.Value.Year, 1, 1),
-                            Value = totalProduction,
+                            Value = totalProduction
                         }
                     );
                 }
@@ -208,12 +201,12 @@ public partial class AzureBlobCtrl
             }
 
             var productionTotal = new ProductionDto()
-            {
-                Inverters = inverters.OrderBy(i => i.Id).ToList(),
-                TimeType = (int)FileType.Total,
-                TimeStamp = new DateTime((new DateOnly(2014, 1, 1)), TimeOnly.MinValue,
+                                  {
+                                      Inverters = inverters.OrderBy(i => i.Id).ToList(),
+                                      TimeType = (int)FileType.Total,
+                                      TimeStamp = new DateTime(new DateOnly(2014, 1, 1), TimeOnly.MinValue,
                                           DateTimeKind.Local)
-            };
+                                  };
 
             var res = string.Empty;
             var productionJson = ProductionDto.ToJson(productionTotal);

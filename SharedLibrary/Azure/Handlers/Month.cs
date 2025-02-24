@@ -57,7 +57,7 @@ public partial class AzureBlobCtrl
                     {
                         inverters.Add(new Inverter(){
                             Id = inverrr.Id,
-                            Production = new List<DataPoint>();
+                            Production = new List<DataPoint>()
                         });
                     }   
                 }
