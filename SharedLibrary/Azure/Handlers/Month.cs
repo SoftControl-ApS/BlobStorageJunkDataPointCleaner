@@ -26,7 +26,7 @@ public partial class AzureBlobCtrl
                 Console.WriteLine("Working ... ");
                 var monthGroup = month.ToList();
                 var result = await ConvertProductionDayToProductionMonthAsync(monthGroup);
-                Console.WriteLine("Working ... ");
+                Console.WriteLine($"Finished date: {month.First().Date.ToString()}");
             }
         }
         catch (Exception e)
@@ -50,11 +50,11 @@ public partial class AzureBlobCtrl
             DateTime? date = new DateTime?();
             List<DataPoint> productions = new List<DataPoint>();
             
-            if(month.First().Date > new DateOnly(2025,01,20))
-            continue;
-
             foreach (var day in month)
             {
+                if(day.Date >= new DateOnly(DateTime.Today.Year,DateTime.Today.Month,DateTime.Today.Day))
+                    break;
+
                 var productionDay = ProductionDto.FromJson(day.DataJson);
                  Inverter inverterProduction = null;
                 try{
@@ -80,7 +80,9 @@ public partial class AzureBlobCtrl
                                             Value = inverterProduction.Production.Sum(x => (double)x.Value),
                                         });
 
+                    var A = inverterProduction.Production.Where(x => x.TimeStamp.Value.Date > DateTime.Today);
                         // Add total day production to the total month production
+                    
                         totalMonthProduction += inverterProduction.Production.Sum(x => (double)x.Value);
                     }
                     catch (Exception e)

@@ -23,15 +23,15 @@ public partial class AzureBlobCtrl
         //}
         //await DeleteAllYearFilesExceptDays(date);
 
-        bool hasfile = await CheckForDayFiles(date);
-        if (!hasfile)
-        {
-            Log($"InstallationId: {InstallationId} \t" + "Year" + date.Year + " Will not be handled");
-        }
-        else
-        {
-            await CleanYear_AllDaysFiles(date);
-        }
+        // bool hasfile = await CheckForDayFiles(date);
+        // if (!hasfile)
+        // {
+        //     Log($"InstallationId: {InstallationId} \t" + "Year" + date.Year + " Will not be handled");
+        // }
+        // else
+        // {
+        //     await CleanYear_AllDaysFiles(date);
+        // }
 
         await SyncPmWithPd(date);
         await SuyncPmToYear(date);

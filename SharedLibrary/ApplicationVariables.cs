@@ -33,22 +33,19 @@ namespace SharedLibrary
             Configuration = builder.Build();
 
 
-#if DEBUG
+// #if DEBUG
 
-            AzureBlobConnectionName = "sundatatest";
-            AzureBlobConnectionKey =
-                "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";
-#elif TRACE
-            ////AzureBlobConnectionName = "sundata";
-            ////AzureBlobConnectionKey = "/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==";
-#endif
+//             AzureBlobConnectionName = "sundatatest";
+//             AzureBlobConnectionKey =
+//                 "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";
+// #elif TRACE
+           AzureBlobConnectionName = "sundata";
+           AzureBlobConnectionKey = "/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==";
+// #endif
             if (!AzureBlobConnectionName.Contains("test"))
             {
 
-                Console.WriteLine("Current blob conneciotn is not test");
-                Console.ReadLine();
-                Console.ReadLine();
-                Console.ReadLine();
+                Console.WriteLine("Current blob conneciotn is not test", Console.ForegroundColor = ConsoleColor.Red);
             }
             AzureBlobConnectionString =
                 $"DefaultEndpointsProtocol=https;AccountName={AzureBlobConnectionName};" +
