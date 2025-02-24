@@ -16,8 +16,6 @@ public partial class AzureBlobCtrl
     {
         try
         {
-            date = new DateOnly(2023, 1, 1);
-
             // PM -> PY 🧸
             var yearMonthsFiles = await GetYear_MonthFilessAsync(date);
 
