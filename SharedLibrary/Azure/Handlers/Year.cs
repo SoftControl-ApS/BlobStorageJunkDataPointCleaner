@@ -5,6 +5,7 @@ using System.Reflection.Metadata;
 using SharedLibrary.Models;
 using System;
 using static SharedLibrary.util.Util;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace SharedLibrary.Azure;
 
@@ -29,6 +30,28 @@ public partial class AzureBlobCtrl
 
             foreach (var month in yearMonthsFiles)
             {
+
+                try
+                {
+                    var today = DateOnly.FromDateTime(DateTime.Today);
+                    if (today.Year == month.Date.Year)
+                    {
+                        if (today.Month == month.Date.Month)
+                        {
+                            Console.WriteLine($"Wont handle current month:  {today}");
+                            continue;
+                        }
+                    }
+
+                }
+                catch (Exception e)
+                {
+                    LogError("Installation ID: " + this.InstallationId + "\t" + e);
+
+                    return "";
+                }
+
+
                 var invs = ExtractInverters(
                     ProductionDto.FromJson(yearMonthsFiles.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson)
                                  .Inverters);
@@ -124,7 +147,18 @@ public partial class AzureBlobCtrl
             return null;
 
 
-        var yearFiles = allBlobs.Where(blob => blob.Name.Contains($"pm{date.Year:D4}")).ToList();
+        var yearFiles = allBlobs.Where(blob => blob.Name.Contains($"pm{date.Year:D4}"))
+                                .Where(blob => blob.Name.Contains($"!pm{date.Year:D4}"))
+                                .ToList();
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (today.Year == date.Year)
+        {
+            //Exclude days from the current month from being handled
+            yearFiles = yearFiles.Where(blob => !blob.Name.Contains($"pm{today.Year:D4}{today.Month:D2}")).ToList();
+        }
+
+
 
         var tasks = new List<Task<MonthProductionDTO>>();
         var monthsFiles = new List<MonthProductionDTO>();

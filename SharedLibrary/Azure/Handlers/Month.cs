@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.WindowsAzure.Storage.Blob;
 using SharedLibrary.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using static SharedLibrary.util.Util;
 
 namespace SharedLibrary.Azure;
@@ -43,15 +44,31 @@ public partial class AzureBlobCtrl
         );
     }
 
-    public async Task<string> ConvertProductionDayToProductionMonthAsync(
-        List<MonthProductionDTO> month
-    )
+    public async Task<string> ConvertProductionDayToProductionMonthAsync(List<MonthProductionDTO> month)
     {
-        // var inverters = ExtractInverters(
-        //     ProductionDto.FromJson(month.First(x => !string.IsNullOrEmpty(x.DataJson)).DataJson).Inverters!
-        // );
-        var inverters = new List<Inverter>();
 
+        try
+        {
+
+       
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (today.Year == month.FirstOrDefault(x => x.Date != null).Date.Year)
+        {
+            if (today.Month == month.FirstOrDefault(x => x.Date != null).Date.Month)
+            {
+                Console.WriteLine($"Wont handle current month:  {today}");
+                return string.Empty;
+            }
+        }
+
+        }
+        catch (Exception e)
+        {
+            LogError("Installation ID: " + this.InstallationId + "\t" + e);
+
+            return "";
+        }
+        var inverters = new List<Inverter>();
         foreach (var day in month)
         {
             try

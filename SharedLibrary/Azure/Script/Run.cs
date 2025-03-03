@@ -15,14 +15,6 @@ public partial class AzureBlobCtrl
 
     public async Task<string> Run(DateOnly date)
     {
-        //var duplicateResult = await DuplicateBlobFolder(ContainerName, InstallationId);
-        //if (!duplicateResult)
-        //{
-        //    LogError("Critical Error: Cannot duplicate this installation");
-        //    return null;
-        //}
-        //await DeleteAllYearFilesExceptDays(date);
-
         bool hasfile = await CheckForDayFiles(date);
         if (!hasfile)
         {

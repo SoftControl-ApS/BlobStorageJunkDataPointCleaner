@@ -19,82 +19,33 @@ static partial class Program
               4, 5,7,
               8,9,14,10,
               11,13,15,16,17,18,19,
-              
-              
+
               101,102,150,155,199,272,
         };
 
-        var cts = new CancellationTokenSource();
-        var feedbackTask = Task.Run(() => PrintDots(cts.Token));
-
-        // Start the main operation
-        Stopwatch sw = new Stopwatch();
-        sw.Start();
-        // var tasks = new List<Task>();
-        foreach (var instID in installationIds)
+        using (CancellationTokenSource cts = new())
         {
-            if(DoneInstallation.Contains(instID))
-            continue;
-            await CheckAndDelay();
-            await Run(instID);
-        }
+            var feedbackTask = Task.Run(() => PrintDots(cts.Token));
 
-        // await Task.WhenAll(tasks);
-        sw.Stop();
-        Log($"Operation took {sw.ElapsedMilliseconds / 1000}s");
-        Title("FINISHED");
-
-        // Stop the feedback thread
-
-
-        // Handle failed files if any
-        if (failedFiles.Any())
-        {
-            Title("Failed Files");
-            foreach (var s in failedFiles)
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            foreach (var instID in installationIds)
             {
-                Console.WriteLine($"{s.Key} | {s.Value}");
+                if (DoneInstallation.Contains(instID))
+                    continue;
+                await CheckAndDelay();
+                await Run(instID);
             }
+
+            sw.Stop();
+            Log($"Operation took {(sw.ElapsedMilliseconds / 1000) / 60} min");
         }
-        cts.Cancel();
-        await feedbackTask;
 
-        Console.WriteLine("Run is complete. Press Enter to exit.");
-        Console.ReadLine();
-        Console.ReadLine();
-        Console.ReadLine();
+
+
+        Completed();
     }
 
-    static async Task CheckAndDelay()
-{
-    DateTime now = DateTime.Now;
-    int minutesToNextHour = 60 - now.Minute;
-
-    // If the current time is within 5 minutes before the next hour (xx:55 - xx:59)
-    if (minutesToNextHour <= 5)
-    {
-        DateTime waitUntil = now.AddMinutes(minutesToNextHour + 5);
-        TimeSpan delay = waitUntil - DateTime.Now;
-
-        Console.WriteLine($"Waiting until {waitUntil} to continue...");
-        await Task.Delay(delay);
-    }
-    }
-
-
-    static void PrintDots(CancellationToken token)
-    {
-        Random random = new Random();
-        while (!token.IsCancellationRequested)
-        {
-            int dotCount = random.Next(1, 6); // Generate a random number between 1 and 5
-            for (int i = 0; i < dotCount; i++)
-            {
-                Console.Write(".\t");
-            }
-            Thread.Sleep(5000); // Wait for 500 milliseconds before printing the next set of dots
-        }
-    }
 
     public static async Task Run(int installationID)
     {
@@ -103,7 +54,6 @@ static partial class Program
             var installationId = installationID.ToString();
             var containerName = SharedLibrary.ApplicationVariables.AzureBlobContainerReference;
             DateTime date = DateTime.Now;
-            // var energy = 3_600_000_000;
             var energy = 540_000_000;
             Console.WriteLine($"Handling Installation {installationId}");
             Console.WriteLine($"ContainerName: {containerName}");
@@ -147,5 +97,57 @@ static partial class Program
         {
             failedFiles.TryAdd($"Somewhere", e.Message);
         }
+    }
+
+    static async Task CheckAndDelay()
+    {
+        DateTime now = DateTime.Now;
+        int minutesToNextHour = 60 - now.Minute;
+
+        // If the current time is within 5 minutes before the next hour (xx:55 - xx:59)
+        if (minutesToNextHour <= 5)
+        {
+            DateTime waitUntil = now.AddMinutes(minutesToNextHour + 5);
+            TimeSpan delay = waitUntil - DateTime.Now;
+
+            Console.WriteLine($"Waiting until {waitUntil} to continue...");
+            await Task.Delay(delay);
+        }
+    }
+
+
+    static void PrintDots(CancellationToken token)
+    {
+        Random random = new Random();
+        while (!token.IsCancellationRequested)
+        {
+            int dotCount = random.Next(1, 6); // Generate a random number between 1 and 5
+            for (int i = 0; i < dotCount; i++)
+            {
+                Console.Write(".\t");
+            }
+            Thread.Sleep(5000); // Wait for 500 milliseconds before printing the next set of dots
+        }
+    }
+
+
+    static void Completed()
+    {
+        Title("FINISHED");
+
+        if (failedFiles.Any())
+        {
+            Title("Failed Files");
+            foreach (var s in failedFiles)
+            {
+                LogError($"Faile file : {s.Key} | {s.Value}");
+            }
+        }
+
+
+        Console.WriteLine("Run is complete. Press Enter to exit.");
+        Console.ReadLine();
+        Console.ReadLine();
+        Console.ReadLine();
     }
 }

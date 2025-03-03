@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 using SharedLibrary.Models;
+using static System.Reflection.Metadata.BlobBuilder;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using static SharedLibrary.util.Util;
 
@@ -29,13 +30,13 @@ public partial class AzureBlobCtrl
 
         string fileName = $"pd{date.Year}{currentMonth:D2}{currentDay:D2}";
 
-//TODO: RETURNS FALSE EVEN IF FILE EXISTS
+        //TODO: RETURNS FALSE EVEN IF FILE EXISTS
         // if (!await BlobExistsAsync(fileName))
         // {
         //     return null;
         // }
 
-    
+
 
         var json = await ReadBlobFile(fileName);
 
@@ -44,11 +45,11 @@ public partial class AzureBlobCtrl
             try
             {
                 var result = new MonthProductionDTO()
-                             {
-                                 DataJson = json,
-                                 Date = new DateOnly(date.Year, currentMonth, currentDay),
-                                 FileType = FileType.Day,
-                             };
+                {
+                    DataJson = json,
+                    Date = new DateOnly(date.Year, currentMonth, currentDay),
+                    FileType = FileType.Day,
+                };
                 return result;
             }
             catch (Exception ex)
@@ -71,6 +72,14 @@ public partial class AzureBlobCtrl
         {
             var filteredBlobs = allBlobs.Where(blob => blob.Name.Contains($"pd{date.Year}{month:D2}")
                                                        && !blob.Name.ToLower().Contains($"_backup")).ToList();
+
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            if (today.Year == date.Year)
+            {
+                //Exclude days from the current month from being handled
+                filteredBlobs = filteredBlobs.Where(blob => !blob.Name.Contains($"pd{today.Year}{today.Month:D2}")).ToList();
+            }
+
             filteredBlobs = filteredBlobs.OrderBy(b => b.Name).ToList();
 
             tasks.Add(Task.Run(async () =>
@@ -111,10 +120,21 @@ public partial class AzureBlobCtrl
 
     public async Task<bool> CleanYear_AllDaysFiles(DateOnly date)
     {
+        var today = DateOnly.FromDateTime(DateTime.Now);
+
         var blobs = CloudBlobs
                     .Where(blob => blob.Name.Contains($"pd{date.Year}"))
                     .Where(blob => !blob.Name.ToLower().Contains("_backup"))
                     .ToList();
+
+
+        if (today.Year == date.Year)
+        {
+            //Exclude days from the current month from being handled
+            blobs = blobs.Where(blob => !blob.Name.Contains($"pd{today.Year}{today.Month:D2}")).ToList();
+        }
+
+
         foreach (var blob in blobs)
         {
             var fileName = GetFileName(blob.Name);
@@ -129,8 +149,11 @@ public partial class AzureBlobCtrl
                 continue;
 
             var filedate = ExtractDateFromFileName(fileName);
-            if (filedate > new DateOnly(2025, 01, 20))
+            if (filedate >= new DateOnly(today.Year, today.Month, 1))
+            {
+                //If files from today manage to bypass the fitler, we the get skipped here
                 continue;
+            }
 
             List<Inverter> updatedInverters = new();
 
@@ -205,14 +228,14 @@ public partial class AzureBlobCtrl
                         Console.WriteLine(
                             $"InstallationId: {InstallationId} \tFileName: {fileName}\t" + "Updating File");
                         var updatedProduction = new ProductionDto()
-                                                {
-                                                    TimeStamp = new DateTime(
+                        {
+                            TimeStamp = new DateTime(
                                                         originalProduction.TimeStamp.Value.Year,
                                                         originalProduction.TimeStamp.Value.Month,
                                                         originalProduction.TimeStamp.Value.Day),
-                                                    TimeType = originalProduction.TimeType,
-                                                    Inverters = updatedInverters,
-                                                };
+                            TimeType = originalProduction.TimeType,
+                            Inverters = updatedInverters,
+                        };
                         var updatedJson = ProductionDto.ToJson(updatedProduction);
                         var result = await ForcePublish(fileName, updatedJson);
                         if (!result)
