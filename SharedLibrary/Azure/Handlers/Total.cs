@@ -14,7 +14,8 @@ public partial class AzureBlobCtrl
         var yearBlolbBlocks = GetAllBlobsAsync().Result
         .Where(blob =>
         blob.Name.Contains($"py")
-        && !blob.Name.Contains("_backup"))
+        && !blob.Name.Contains("_backup")
+        && !blob.Name.Contains($"py{DateTime.Now.Year}"))
         .ToList();
 
         var productions = new ConcurrentBag<ProductionDto>();

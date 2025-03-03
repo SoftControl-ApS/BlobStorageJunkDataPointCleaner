@@ -39,6 +39,10 @@ public partial class AzureBlobCtrl // PR: partial class sucks. Don't bother to c
                 CloudBlobs = resultSegment.Results.OfType<CloudBlockBlob>().ToList();
             } while (continuationToken != null);
 
+            if (refetch)
+            if(!CloudBlobs.Any())
+            throw new Exception($"InstallationID {InstallationId} \t contans no files");
+
             LastDownloadLoadDateTime = DateTime.Now;
         }
 
