@@ -23,15 +23,15 @@ public partial class AzureBlobCtrl
         //}
         //await DeleteAllYearFilesExceptDays(date);
 
-        // bool hasfile = await CheckForDayFiles(date);
-        // if (!hasfile)
-        // {
-        //     Log($"InstallationId: {InstallationId} \t" + "Year" + date.Year + " Will not be handled");
-        // }
-        // else
-        // {
-        //     await CleanYear_AllDaysFiles(date);
-        // }
+        bool hasfile = await CheckForDayFiles(date);
+        if (!hasfile)
+        {
+            Log($"InstallationId: {InstallationId} \t" + "Year" + date.Year + " Will not be handled");
+        }
+        else
+        {
+            await CleanYear_AllDaysFiles(date);
+        }
 
         await SyncPmWithPd(date);
         await SuyncPmToYear(date);
@@ -48,8 +48,7 @@ public partial class AzureBlobCtrl
                         .Where(blob => blob != null)
                         .Where(blob => blob.Name.Contains($"pd{date.Year}") ||
                                        blob.Name.Contains($"pm{date.Year}") ||
-                                       blob.Name.Contains($"py{date.Year}") ||
-                                       blob.Name.Contains($"pt"))
+                                       blob.Name.Contains($"py{date.Year}"))
                         .ToList();
 
             try
