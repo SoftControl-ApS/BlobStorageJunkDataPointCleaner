@@ -119,6 +119,7 @@ public partial class AzureBlobCtrl
                     LogError(
                         $"InstallationID {InstallationId} \t"
                             + "Exception When getting Inverter.Single()\t"
+                            + $"InvID: {inverter.Id}\t"
                             + $"Date: {date}"
                     );
                 }

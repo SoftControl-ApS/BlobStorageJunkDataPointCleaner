@@ -148,7 +148,6 @@ public partial class AzureBlobCtrl
 
 
         var yearFiles = allBlobs.Where(blob => blob.Name.Contains($"pm{date.Year:D4}"))
-                                .Where(blob => blob.Name.Contains($"!pm{date.Year:D4}"))
                                 .ToList();
 
         var today = DateOnly.FromDateTime(DateTime.Today);
