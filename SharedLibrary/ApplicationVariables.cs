@@ -1,5 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
-using System.IO;
+﻿using System.IO;
+using Microsoft.Extensions.Configuration;
 
 namespace SharedLibrary
 {
@@ -8,7 +8,6 @@ namespace SharedLibrary
         public static IConfiguration Configuration { get; }
         public static object locktotalFile { get; } = new();
         public static List<Failed> FailedFiles = new();
-
 
         private static string _logFilePath = "log.txt";
         private static readonly object _logFilePathLock = new object();
@@ -27,36 +26,37 @@ namespace SharedLibrary
         static ApplicationVariables()
         {
             var builder = new ConfigurationBuilder()
-                          .SetBasePath(Directory.GetCurrentDirectory())
-                          .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
             Configuration = builder.Build();
 
+            // AzureBlobConnectionName = "sundatatest";
+            // AzureBlobConnectionKey =
+            //     "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";
 
-// #if DEBUG
+            AzureBlobConnectionName = "sundata";
+            AzureBlobConnectionKey =
+                "/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==";
 
-//             AzureBlobConnectionName = "sundatatest";
-//             AzureBlobConnectionKey =
-//                 "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";
-// #elif TRACE
-        //    AzureBlobConnectionName = "sundata";
-        //    AzureBlobConnectionKey = "/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==";
-
-          AzureBlobConnectionName = "sundatatest";
-         AzureBlobConnectionKey =
-                 "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";
-    //   
-      AzureBlobContainerReference = "installations";
-        // AzureBlobContainerReference = "hpbackup20250227";
-// #endif
+            // AzureBlobConnectionName = "sundatatest";
+            // AzureBlobConnectionKey =
+            //     "z1CzWXUvl3756GlrguOi/5Iwn7w+ILfAzlxJ/dOdz2UG+8w2vbKXT0rkBllvpCg0IDhAC6RmeEsL+AStzJa0Bw==";
+            // //
+            // AzureBlobContainerReference = "hpbackup20250227";
+            // #endif
             if (!AzureBlobConnectionName.Contains("test"))
             {
-                Console.WriteLine("Current blob conneciotn is not test", Console.ForegroundColor = ConsoleColor.Red);
+                Console.WriteLine(
+                    "Current blob conneciotn is not test",
+                    Console.ForegroundColor = ConsoleColor.Red
+                );
             }
             AzureBlobConnectionString =
-                $"DefaultEndpointsProtocol=https;AccountName={AzureBlobConnectionName};" +
-                $"AccountKey={AzureBlobConnectionKey};" +
-                $"EndpointSuffix=core.windows.net";
+                $"DefaultEndpointsProtocol=https;AccountName={AzureBlobConnectionName};"
+                + $"AccountKey={AzureBlobConnectionKey};"
+                + $"EndpointSuffix=core.windows.net";
+            AzureBlobContainerReference = "installations";
 
             // AzureBlobConnectionString = "DefaultEndpointsProtocol=https;AccountName=sundata;AccountKey=/y8BUVnCBJfKsvgwLZkl3mMaZ3OB/15QmMP/J0TJezps0QloO0CR/dJS16MjK/t1dO1GEFQT7FTVXhhXIE3wrQ==;EndpointSuffix=core.windows.net";
 
@@ -75,15 +75,14 @@ namespace SharedLibrary
             }
             var d = DateTime.Now;
 
-            string timestamp = $"{d.Year:D4}-{d.Month:D2}-{d.Day:D2}-{d.Hour}-{d.Minute}-{d.Second}";
+            string timestamp =
+                $"{d.Year:D4}-{d.Month:D2}-{d.Day:D2}-{d.Hour}-{d.Minute}-{d.Second}";
             _logFilePath = Path.Combine(logDirectory, $"log-{timestamp}.txt");
 
             // Check if the file exists, if not, create it
             if (!File.Exists(_logFilePath))
             {
-                using (File.Create(_logFilePath))
-                {
-                }
+                using (File.Create(_logFilePath)) { }
             }
         }
 
@@ -98,7 +97,6 @@ namespace SharedLibrary
                 Description = desc;
             }
         }
-
 
         #region Private Fields
 
